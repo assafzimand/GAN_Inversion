@@ -13,10 +13,267 @@ from typing import Optional, Tuple, Union
 import torch
 import torch.nn as nn
 import pickle
+import io
 from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+class LegacyUnpickler(pickle.Unpickler):
+    """
+    Custom unpickler for loading NVIDIA StyleGAN2 .pkl files.
+    
+    NVIDIA's pickle files contain references to their dnnlib and torch_utils
+    modules, which aren't available in our environment. This unpickler
+    creates stub modules/classes to bypass those dependencies while
+    extracting the actual PyTorch generator model.
+    """
+    
+    def find_class(self, module, name):
+        """
+        Override find_class to handle missing NVIDIA modules.
+        
+        Args:
+            module: Module name (e.g., 'dnnlib.tflib.network')
+            name: Class name (e.g., 'Network')
+        
+        Returns:
+            Class or stub class for missing modules
+        """
+        # Handle missing dnnlib modules
+        if module.startswith('dnnlib'):
+            # Create a stub module namespace
+            import sys
+            import types
+            
+            # Split module path
+            parts = module.split('.')
+            
+            # Create nested module structure
+            current_module = None
+            for i, part in enumerate(parts):
+                module_name = '.'.join(parts[:i+1])
+                if module_name not in sys.modules:
+                    sys.modules[module_name] = types.ModuleType(module_name)
+                current_module = sys.modules[module_name]
+            
+            # Create a stub class if it doesn't exist
+            if not hasattr(current_module, name):
+                # Create a stub class that can hold PyTorch modules and is callable
+                class StubNetwork:
+                    """Stub class for NVIDIA's Network wrapper - callable for gradient flow"""
+                    def __init__(self, *args, **kwargs):
+                        pass
+                    
+                    def __setstate__(self, state):
+                        # Restore state from pickle
+                        self.__dict__.update(state)
+                    
+                    def __getstate__(self):
+                        return self.__dict__
+                    
+                    def __call__(self, *args, **kwargs):
+                        """
+                        Make Network callable - delegates to components recursively.
+                        This allows gradient flow through the PyTorch modules inside.
+                        """
+                        # If this is a synthesis/mapping network, delegate to its components
+                        if hasattr(self, 'components') and isinstance(self.components, dict):
+                            # First, try common high-level keys
+                            for key in ['synthesis', 'mapping', 'main']:
+                                if key in self.components:
+                                    component = self.components[key]
+                                    if callable(component):
+                                        return component(*args, **kwargs)
+                            
+                            # If no known key, try to find any nn.Module or callable
+                            # Check for actual PyTorch modules first (deepest level)
+                            import torch.nn as nn
+                            for key, component in self.components.items():
+                                if isinstance(component, nn.Module):
+                                    # Found actual PyTorch module - call it
+                                    return component(*args, **kwargs)
+                            
+                            # Otherwise, try any callable component (might be nested Network)
+                            for key, component in self.components.items():
+                                if callable(component):
+                                    return component(*args, **kwargs)
+                        
+                        # If no components, maybe it's already a callable module
+                        raise RuntimeError(
+                            f"Network wrapper is not properly callable. "
+                            f"Attributes: {list(self.__dict__.keys()) if hasattr(self, '__dict__') else 'none'}, "
+                            f"Components: {list(self.components.keys()) if hasattr(self, 'components') and isinstance(self.components, dict) else 'none'}"
+                        )
+                
+                stub_class = type(name, (StubNetwork,), {})
+                setattr(current_module, name, stub_class)
+            
+            return getattr(current_module, name)
+        
+        # Handle missing torch_utils modules (similar to dnnlib)
+        if module.startswith('torch_utils'):
+            import sys
+            import types
+            
+            parts = module.split('.')
+            current_module = None
+            for i, part in enumerate(parts):
+                module_name = '.'.join(parts[:i+1])
+                if module_name not in sys.modules:
+                    sys.modules[module_name] = types.ModuleType(module_name)
+                current_module = sys.modules[module_name]
+            
+            if not hasattr(current_module, name):
+                # Create a stub class that can hold PyTorch modules and is callable
+                class StubNetwork:
+                    """Stub class for torch_utils classes - callable for gradient flow"""
+                    def __init__(self, *args, **kwargs):
+                        pass
+                    
+                    def __setstate__(self, state):
+                        self.__dict__.update(state)
+                    
+                    def __getstate__(self):
+                        return self.__dict__
+                    
+                    def __call__(self, *args, **kwargs):
+                        """Delegate to components if available - recursively handles nested Networks"""
+                        if hasattr(self, 'components') and isinstance(self.components, dict):
+                            # Try common high-level keys
+                            for key in ['synthesis', 'mapping', 'main']:
+                                if key in self.components:
+                                    component = self.components[key]
+                                    if callable(component):
+                                        return component(*args, **kwargs)
+                            
+                            # Check for actual PyTorch modules first
+                            import torch.nn as nn
+                            for key, component in self.components.items():
+                                if isinstance(component, nn.Module):
+                                    return component(*args, **kwargs)
+                            
+                            # Try any callable component
+                            for key, component in self.components.items():
+                                if callable(component):
+                                    return component(*args, **kwargs)
+                        
+                        raise RuntimeError(
+                            f"torch_utils wrapper not callable. "
+                            f"Attributes: {list(self.__dict__.keys()) if hasattr(self, '__dict__') else 'none'}, "
+                            f"Components: {list(self.components.keys()) if hasattr(self, 'components') and isinstance(self.components, dict) else 'none'}"
+                        )
+                
+                stub_class = type(name, (StubNetwork,), {})
+                setattr(current_module, name, stub_class)
+            
+            return getattr(current_module, name)
+        
+        # For everything else, use the default behavior
+        return super().find_class(module, name)
+
+
+def load_pkl_legacy(weights_path: Path) -> nn.Module:
+    """
+    Load NVIDIA StyleGAN2 .pkl file using custom unpickler.
+    
+    Args:
+        weights_path: Path to .pkl file
+    
+    Returns:
+        Generator model (PyTorch nn.Module)
+    
+    Raises:
+        RuntimeError: If loading fails
+    """
+    try:
+        with open(weights_path, 'rb') as f:
+            # Use custom unpickler
+            unpickler = LegacyUnpickler(f)
+            checkpoint = unpickler.load()
+        
+        # Extract generator from checkpoint structure
+        if isinstance(checkpoint, tuple):
+            # NVIDIA format: (G, D, Gs) where Gs is the EMA generator
+            if len(checkpoint) >= 3:
+                generator = checkpoint[2]  # Gs (EMA generator)
+                logger.info("Extracted Gs (EMA generator) from tuple format")
+            elif len(checkpoint) >= 1:
+                generator = checkpoint[0]  # Fallback to G
+                logger.info("Extracted G from tuple format")
+            else:
+                raise RuntimeError("Empty tuple in checkpoint")
+        elif isinstance(checkpoint, dict):
+            # Try common keys
+            if 'G_ema' in checkpoint:
+                generator = checkpoint['G_ema']
+            elif 'G' in checkpoint:
+                generator = checkpoint['G']
+            elif 'generator' in checkpoint:
+                generator = checkpoint['generator']
+            else:
+                # Assume the dict itself is the checkpoint
+                generator = checkpoint
+        else:
+            # Direct model object
+            generator = checkpoint
+        
+        # Handle NVIDIA Network wrapper
+        # NEW APPROACH: Return the Network wrapper directly (it's now callable)
+        # The StubNetwork class has __call__ that delegates to components
+        if not isinstance(generator, nn.Module):
+            # Check instance attributes
+            inst_attrs = list(generator.__dict__.keys()) if hasattr(generator, '__dict__') else []
+            logger.info(f"Network wrapper has attributes: {inst_attrs}")
+            
+            if hasattr(generator, 'components') and isinstance(generator.components, dict):
+                components = generator.components
+                logger.info(f"Found components: {list(components.keys())}")
+                logger.info("Returning Network wrapper directly (now callable via __call__)")
+                # Return the Network wrapper as-is - it's callable now
+                # Gradients will flow through to the PyTorch modules in components
+            else:
+                raise RuntimeError(
+                    f"Cannot use {type(generator).__name__} - no components dict found. "
+                    f"Instance attributes: {inst_attrs}"
+                )
+        
+        # COMMENTED OUT: Old extraction approach (kept for backup)
+        # if not isinstance(generator, nn.Module):
+        #     # Extract PyTorch modules from components dict
+        #     if hasattr(generator, 'components') and isinstance(generator.components, dict):
+        #         components = generator.components
+        #         logger.info(f"Found components: {list(components.keys())}")
+        #         
+        #         # Create a simple wrapper to hold mapping and synthesis
+        #         class ExtractedGenerator(nn.Module):
+        #             def __init__(self, components_dict):
+        #                 super().__init__()
+        #                 # Extract mapping and synthesis networks from components
+        #                 if 'mapping' in components_dict:
+        #                     self.mapping = components_dict['mapping']
+        #                 if 'synthesis' in components_dict:
+        #                     self.synthesis = components_dict['synthesis']
+        #             
+        #             def forward(self, *args, **kwargs):
+        #                 # Forward to synthesis
+        #                 if hasattr(self, 'synthesis'):
+        #                     return self.synthesis(*args, **kwargs)
+        #                 else:
+        #                     raise RuntimeError("No synthesis network found in components")
+        #         
+        #         generator = ExtractedGenerator(components)
+        #         logger.info("Successfully extracted generator from Network components")
+        
+        logger.info("Successfully loaded legacy .pkl format")
+        return generator
+        
+    except Exception as e:
+        raise RuntimeError(
+            f"Failed to load legacy .pkl file: {str(e)}\n"
+            f"The file might be corrupted or in an unsupported format."
+        )
 
 
 def load_generator(
@@ -86,14 +343,8 @@ def load_generator(
                 generator = checkpoint
                 
         elif suffix == '.pkl':
-            # NVIDIA pickle format
-            with open(weights_path, 'rb') as f:
-                checkpoint = pickle.load(f)
-            
-            if isinstance(checkpoint, dict) and 'G_ema' in checkpoint:
-                generator = checkpoint['G_ema']
-            else:
-                generator = checkpoint
+            # NVIDIA pickle format (use legacy unpickler)
+            generator = load_pkl_legacy(weights_path)
         else:
             raise RuntimeError(
                 f"Unsupported checkpoint format: {suffix}\n"
@@ -248,12 +499,25 @@ class StyleGAN2Wrapper(nn.Module):
     def _detect_generator_structure(self):
         """Detect the structure of the loaded generator."""
         # Try to identify mapping and synthesis networks
-        if hasattr(self.generator, 'style'):
+        
+        # Check for Network wrapper with components dict (NVIDIA .pkl format)
+        if hasattr(self.generator, 'components') and isinstance(self.generator.components, dict):
+            components = self.generator.components
+            if 'mapping' in components:
+                self.mapping_network = components['mapping']
+            if 'synthesis' in components:
+                self.synthesis_network = components['synthesis']
+            logger.info("Detected NVIDIA Network wrapper structure")
+        # Check for rosinality format (style attribute)
+        elif hasattr(self.generator, 'style'):
             self.mapping_network = self.generator.style
             self.synthesis_network = self.generator
+            logger.info("Detected rosinality format")
+        # Check for standard PyTorch format (mapping and synthesis as attributes)
         elif hasattr(self.generator, 'mapping') and hasattr(self.generator, 'synthesis'):
             self.mapping_network = self.generator.mapping
             self.synthesis_network = self.generator.synthesis
+            logger.info("Detected standard format")
         else:
             # Assume the generator is the synthesis network
             self.mapping_network = None
