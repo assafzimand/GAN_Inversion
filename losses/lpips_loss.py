@@ -143,8 +143,9 @@ class LPIPSLoss(nn.Module):
         target = target.to(self.device)
 
         # Compute LPIPS
-        with torch.no_grad():
-            loss = self.model(generated, target)
+        # Note: Model is in eval() mode with frozen parameters,
+        # but we allow gradients to flow for optimization
+        loss = self.model(generated, target)
 
         # loss shape: [B, 1, 1, 1] for non-spatial or [B, 1, H, W] for spatial
         if not self.spatial:
