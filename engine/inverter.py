@@ -120,12 +120,16 @@ def run_inversion(
         'loss': [],
         'steps': 0,
         'time': 0.0,
-        'early_stopped': False
+        'early_stopped': False,
+        'intermediates': {}  # Store intermediate reconstructions
     }
     
     best_loss = float('inf')
     patience_counter = 0
     start_time = time.time()
+    
+    # Save interval for intermediate reconstructions
+    save_interval = cfg.get('save_interval', 100)
     
     for step in range(steps):
         optimizer.zero_grad()
@@ -143,6 +147,12 @@ def run_inversion(
         # Track history
         loss_value = loss.item()
         history['loss'].append(loss_value)
+        
+        # Save intermediate reconstruction every save_interval steps or at step 0
+        if step % save_interval == 0 or step == 0:
+            with torch.no_grad():
+                intermediate = generator(latent, latent_space=latent_space)
+                history['intermediates'][step] = intermediate.detach().cpu()
         
         # Logging
         if (step + 1) % log_interval == 0 or step == 0:
@@ -172,9 +182,13 @@ def run_inversion(
     # Generate final reconstruction
     with torch.no_grad():
         reconstruction = generator(latent, latent_space=latent_space)
+        # Also save final reconstruction as intermediate
+        if step not in history['intermediates']:
+            history['intermediates'][step] = reconstruction.detach().cpu()
     
     logger.info(f"Inversion complete. Final loss: {history['loss'][-1]:.6f}")
     logger.info(f"Total time: {history['time']:.2f}s")
+    logger.info(f"Saved {len(history['intermediates'])} intermediate reconstructions")
     
     return latent.detach(), reconstruction, history
 

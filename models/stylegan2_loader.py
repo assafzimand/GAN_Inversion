@@ -5,274 +5,82 @@ Provides abstractions for loading pretrained StyleGAN2 generators
 and computing latent statistics (e.g., mean_w).
 
 Supports common StyleGAN2 checkpoint formats:
-- Official NVIDIA pkl format (via pickle)
+- HuggingFace Hub models (via huggingface_hub) - **recommended**
 - PyTorch .pt/.pth format (rosinality, etc.)
 """
 
 from typing import Optional, Tuple, Union
+import sys
 import torch
 import torch.nn as nn
-import pickle
-import io
 from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class LegacyUnpickler(pickle.Unpickler):
+def load_hf_stylegan(
+    model_id: str,
+    device: torch.device
+) -> nn.Module:
     """
-    Custom unpickler for loading NVIDIA StyleGAN2 .pkl files.
-    
-    NVIDIA's pickle files contain references to their dnnlib and torch_utils
-    modules, which aren't available in our environment. This unpickler
-    creates stub modules/classes to bypass those dependencies while
-    extracting the actual PyTorch generator model.
-    """
-    
-    def find_class(self, module, name):
-        """
-        Override find_class to handle missing NVIDIA modules.
-        
-        Args:
-            module: Module name (e.g., 'dnnlib.tflib.network')
-            name: Class name (e.g., 'Network')
-        
-        Returns:
-            Class or stub class for missing modules
-        """
-        # Handle missing dnnlib modules
-        if module.startswith('dnnlib'):
-            # Create a stub module namespace
-            import sys
-            import types
-            
-            # Split module path
-            parts = module.split('.')
-            
-            # Create nested module structure
-            current_module = None
-            for i, part in enumerate(parts):
-                module_name = '.'.join(parts[:i+1])
-                if module_name not in sys.modules:
-                    sys.modules[module_name] = types.ModuleType(module_name)
-                current_module = sys.modules[module_name]
-            
-            # Create a stub class if it doesn't exist
-            if not hasattr(current_module, name):
-                # Create a stub class that can hold PyTorch modules and is callable
-                class StubNetwork:
-                    """Stub class for NVIDIA's Network wrapper - callable for gradient flow"""
-                    def __init__(self, *args, **kwargs):
-                        pass
-                    
-                    def __setstate__(self, state):
-                        # Restore state from pickle
-                        self.__dict__.update(state)
-                    
-                    def __getstate__(self):
-                        return self.__dict__
-                    
-                    def __call__(self, *args, **kwargs):
-                        """
-                        Make Network callable - delegates to components recursively.
-                        This allows gradient flow through the PyTorch modules inside.
-                        """
-                        # If this is a synthesis/mapping network, delegate to its components
-                        if hasattr(self, 'components') and isinstance(self.components, dict):
-                            # First, try common high-level keys
-                            for key in ['synthesis', 'mapping', 'main']:
-                                if key in self.components:
-                                    component = self.components[key]
-                                    if callable(component):
-                                        return component(*args, **kwargs)
-                            
-                            # If no known key, try to find any nn.Module or callable
-                            # Check for actual PyTorch modules first (deepest level)
-                            import torch.nn as nn
-                            for key, component in self.components.items():
-                                if isinstance(component, nn.Module):
-                                    # Found actual PyTorch module - call it
-                                    return component(*args, **kwargs)
-                            
-                            # Otherwise, try any callable component (might be nested Network)
-                            for key, component in self.components.items():
-                                if callable(component):
-                                    return component(*args, **kwargs)
-                        
-                        # If no components, maybe it's already a callable module
-                        raise RuntimeError(
-                            f"Network wrapper is not properly callable. "
-                            f"Attributes: {list(self.__dict__.keys()) if hasattr(self, '__dict__') else 'none'}, "
-                            f"Components: {list(self.components.keys()) if hasattr(self, 'components') and isinstance(self.components, dict) else 'none'}"
-                        )
-                
-                stub_class = type(name, (StubNetwork,), {})
-                setattr(current_module, name, stub_class)
-            
-            return getattr(current_module, name)
-        
-        # Handle missing torch_utils modules (similar to dnnlib)
-        if module.startswith('torch_utils'):
-            import sys
-            import types
-            
-            parts = module.split('.')
-            current_module = None
-            for i, part in enumerate(parts):
-                module_name = '.'.join(parts[:i+1])
-                if module_name not in sys.modules:
-                    sys.modules[module_name] = types.ModuleType(module_name)
-                current_module = sys.modules[module_name]
-            
-            if not hasattr(current_module, name):
-                # Create a stub class that can hold PyTorch modules and is callable
-                class StubNetwork:
-                    """Stub class for torch_utils classes - callable for gradient flow"""
-                    def __init__(self, *args, **kwargs):
-                        pass
-                    
-                    def __setstate__(self, state):
-                        self.__dict__.update(state)
-                    
-                    def __getstate__(self):
-                        return self.__dict__
-                    
-                    def __call__(self, *args, **kwargs):
-                        """Delegate to components if available - recursively handles nested Networks"""
-                        if hasattr(self, 'components') and isinstance(self.components, dict):
-                            # Try common high-level keys
-                            for key in ['synthesis', 'mapping', 'main']:
-                                if key in self.components:
-                                    component = self.components[key]
-                                    if callable(component):
-                                        return component(*args, **kwargs)
-                            
-                            # Check for actual PyTorch modules first
-                            import torch.nn as nn
-                            for key, component in self.components.items():
-                                if isinstance(component, nn.Module):
-                                    return component(*args, **kwargs)
-                            
-                            # Try any callable component
-                            for key, component in self.components.items():
-                                if callable(component):
-                                    return component(*args, **kwargs)
-                        
-                        raise RuntimeError(
-                            f"torch_utils wrapper not callable. "
-                            f"Attributes: {list(self.__dict__.keys()) if hasattr(self, '__dict__') else 'none'}, "
-                            f"Components: {list(self.components.keys()) if hasattr(self, 'components') and isinstance(self.components, dict) else 'none'}"
-                        )
-                
-                stub_class = type(name, (StubNetwork,), {})
-                setattr(current_module, name, stub_class)
-            
-            return getattr(current_module, name)
-        
-        # For everything else, use the default behavior
-        return super().find_class(module, name)
-
-
-def load_pkl_legacy(weights_path: Path) -> nn.Module:
-    """
-    Load NVIDIA StyleGAN2 .pkl file using custom unpickler.
+    Load StyleGAN model from HuggingFace Hub.
     
     Args:
-        weights_path: Path to .pkl file
+        model_id: HuggingFace model ID (e.g., "hajar001/stylegan2-ffhq-128")
+        device: Target device (cpu or cuda)
     
     Returns:
-        Generator model (PyTorch nn.Module)
+        Loaded StyleGAN model (nn.Module)
     
     Raises:
-        RuntimeError: If loading fails
+        ImportError: If huggingface_hub is not installed
+        RuntimeError: If model loading fails
+    
+    Example:
+        >>> G = load_hf_stylegan("hajar001/stylegan2-ffhq-128", torch.device('cuda'))
     """
     try:
-        with open(weights_path, 'rb') as f:
-            # Use custom unpickler
-            unpickler = LegacyUnpickler(f)
-            checkpoint = unpickler.load()
+        from huggingface_hub import hf_hub_download
+    except ImportError:
+        raise ImportError(
+            "huggingface_hub is required to load models from HuggingFace.\n"
+            "Install with: pip install huggingface-hub"
+        )
+    
+    logger.info(f"Loading StyleGAN from HuggingFace: {model_id}")
+    
+    try:
+        # Download the model architecture file
+        model_file = hf_hub_download(
+            repo_id=model_id,
+            filename="style_gan.py"
+        )
+        logger.info(f"Downloaded model file: {model_file}")
         
-        # Extract generator from checkpoint structure
-        if isinstance(checkpoint, tuple):
-            # NVIDIA format: (G, D, Gs) where Gs is the EMA generator
-            if len(checkpoint) >= 3:
-                generator = checkpoint[2]  # Gs (EMA generator)
-                logger.info("Extracted Gs (EMA generator) from tuple format")
-            elif len(checkpoint) >= 1:
-                generator = checkpoint[0]  # Fallback to G
-                logger.info("Extracted G from tuple format")
-            else:
-                raise RuntimeError("Empty tuple in checkpoint")
-        elif isinstance(checkpoint, dict):
-            # Try common keys
-            if 'G_ema' in checkpoint:
-                generator = checkpoint['G_ema']
-            elif 'G' in checkpoint:
-                generator = checkpoint['G']
-            elif 'generator' in checkpoint:
-                generator = checkpoint['generator']
-            else:
-                # Assume the dict itself is the checkpoint
-                generator = checkpoint
-        else:
-            # Direct model object
-            generator = checkpoint
+        # Add model directory to path
+        model_dir = str(Path(model_file).parent)
+        if model_dir not in sys.path:
+            sys.path.insert(0, model_dir)
         
-        # Handle NVIDIA Network wrapper
-        # NEW APPROACH: Return the Network wrapper directly (it's now callable)
-        # The StubNetwork class has __call__ that delegates to components
-        if not isinstance(generator, nn.Module):
-            # Check instance attributes
-            inst_attrs = list(generator.__dict__.keys()) if hasattr(generator, '__dict__') else []
-            logger.info(f"Network wrapper has attributes: {inst_attrs}")
-            
-            if hasattr(generator, 'components') and isinstance(generator.components, dict):
-                components = generator.components
-                logger.info(f"Found components: {list(components.keys())}")
-                logger.info("Returning Network wrapper directly (now callable via __call__)")
-                # Return the Network wrapper as-is - it's callable now
-                # Gradients will flow through to the PyTorch modules in components
-            else:
-                raise RuntimeError(
-                    f"Cannot use {type(generator).__name__} - no components dict found. "
-                    f"Instance attributes: {inst_attrs}"
-                )
+        # Import the StyleGAN class
+        from style_gan import StyleGAN
         
-        # COMMENTED OUT: Old extraction approach (kept for backup)
-        # if not isinstance(generator, nn.Module):
-        #     # Extract PyTorch modules from components dict
-        #     if hasattr(generator, 'components') and isinstance(generator.components, dict):
-        #         components = generator.components
-        #         logger.info(f"Found components: {list(components.keys())}")
-        #         
-        #         # Create a simple wrapper to hold mapping and synthesis
-        #         class ExtractedGenerator(nn.Module):
-        #             def __init__(self, components_dict):
-        #                 super().__init__()
-        #                 # Extract mapping and synthesis networks from components
-        #                 if 'mapping' in components_dict:
-        #                     self.mapping = components_dict['mapping']
-        #                 if 'synthesis' in components_dict:
-        #                     self.synthesis = components_dict['synthesis']
-        #             
-        #             def forward(self, *args, **kwargs):
-        #                 # Forward to synthesis
-        #                 if hasattr(self, 'synthesis'):
-        #                     return self.synthesis(*args, **kwargs)
-        #                 else:
-        #                     raise RuntimeError("No synthesis network found in components")
-        #         
-        #         generator = ExtractedGenerator(components)
-        #         logger.info("Successfully extracted generator from Network components")
+        # Load pretrained weights
+        model = StyleGAN.from_pretrained(model_id)
+        model = model.to(device)
+        model.eval()
         
-        logger.info("Successfully loaded legacy .pkl format")
-        return generator
+        logger.info(f"Successfully loaded HuggingFace model: {model_id}")
+        logger.info(f"  - Model has 'mapping': {hasattr(model, 'mapping')}")
+        logger.info(f"  - Model has 'synthesis': {hasattr(model, 'synthesis')}")
+        
+        return model
         
     except Exception as e:
         raise RuntimeError(
-            f"Failed to load legacy .pkl file: {str(e)}\n"
-            f"The file might be corrupted or in an unsupported format."
+            f"Failed to load HuggingFace model '{model_id}': {str(e)}\n"
+            f"Make sure the model exists and you have internet connectivity."
         )
 
 
@@ -286,11 +94,11 @@ def load_generator(
     Load pretrained StyleGAN2 generator from checkpoint.
 
     Supports multiple checkpoint formats:
+    - HuggingFace Hub (prefix with "hf://", e.g., "hf://hajar001/stylegan2-ffhq-128") - **recommended**
     - PyTorch state dict (.pt, .pth)
-    - Official NVIDIA pickle format (.pkl)
 
     Args:
-        weights_path: Path to pretrained weights
+        weights_path: Path to pretrained weights or HuggingFace model ID with "hf://" prefix
         device: Target device (cpu or cuda)
         latent_dim: Latent dimension (default: 512)
         num_layers: Number of style layers (default: 18 for 1024x1024)
@@ -304,16 +112,28 @@ def load_generator(
 
     Example:
         >>> device = torch.device('cuda')
+        >>> # Load from HuggingFace
+        >>> G = load_generator('hf://hajar001/stylegan2-ffhq-128', device)
+        >>> # Load from local file
         >>> G = load_generator('checkpoints/stylegan2-ffhq.pt', device)
         >>> z = torch.randn(1, 512).to(device)
         >>> img = G(z, latent_space='W')
     """
+    # Check if this is a HuggingFace model
+    if weights_path.startswith("hf://"):
+        model_id = weights_path[5:]  # Remove "hf://" prefix
+        logger.info(f"Detected HuggingFace model: {model_id}")
+        generator = load_hf_stylegan(model_id, device)
+        return StyleGAN2Wrapper(generator, device)
+    
+    # Otherwise treat as local file
     weights_path = Path(weights_path)
     
     if not weights_path.exists():
         raise FileNotFoundError(
             f"Weights file not found: {weights_path}\n"
-            f"Please download StyleGAN2-FFHQ weights and place in checkpoints/"
+            f"Please download StyleGAN2 weights and place in checkpoints/\n"
+            f"Or use HuggingFace format: hf://model-id"
         )
     
     logger.info(f"Loading StyleGAN2 generator from {weights_path}")
@@ -341,14 +161,11 @@ def load_generator(
             else:
                 # Direct model
                 generator = checkpoint
-                
-        elif suffix == '.pkl':
-            # NVIDIA pickle format (use legacy unpickler)
-            generator = load_pkl_legacy(weights_path)
         else:
             raise RuntimeError(
                 f"Unsupported checkpoint format: {suffix}\n"
-                f"Supported formats: .pt, .pth, .pkl"
+                f"Supported formats: .pt, .pth\n"
+                f"For HuggingFace models, use 'hf://model-id' format"
             )
         
         # Wrap the generator
@@ -479,29 +296,47 @@ class StyleGAN2Wrapper(nn.Module):
     def __init__(
         self,
         generator: nn.Module,
+        device: torch.device,
         latent_dim: int = 512,
-        num_layers: int = 18
+        num_layers: Optional[int] = None
     ):
         """Initialize wrapper with loaded generator."""
         super().__init__()
         self.generator = generator
+        self.device = device
         self.latent_dim = latent_dim
-        self.num_layers = num_layers
+        
+        # Auto-detect num_layers from generator if not provided
+        if num_layers is None:
+            if hasattr(generator, 'synthesis') and hasattr(generator.synthesis, 'num_layers'):
+                self.num_layers = generator.synthesis.num_layers
+                logger.info(f"Auto-detected num_layers={self.num_layers} from generator")
+            else:
+                self.num_layers = 18  # Default for 1024x1024
+                logger.info(f"Using default num_layers={self.num_layers}")
+        else:
+            self.num_layers = num_layers
         
         # Detect generator structure
         self._detect_generator_structure()
         
         logger.debug(
             f"StyleGAN2Wrapper initialized: "
-            f"latent_dim={latent_dim}, num_layers={num_layers}"
+            f"latent_dim={latent_dim}, num_layers={self.num_layers}"
         )
 
     def _detect_generator_structure(self):
         """Detect the structure of the loaded generator."""
         # Try to identify mapping and synthesis networks
         
-        # Check for Network wrapper with components dict (NVIDIA .pkl format)
-        if hasattr(self.generator, 'components') and isinstance(self.generator.components, dict):
+        # Check for standard PyTorch format first (HuggingFace, modern implementations)
+        # This checks for mapping and synthesis as direct attributes
+        if hasattr(self.generator, 'mapping') and hasattr(self.generator, 'synthesis'):
+            self.mapping_network = self.generator.mapping
+            self.synthesis_network = self.generator.synthesis
+            logger.info("Detected standard format (HuggingFace or modern PyTorch)")
+        # Check for Network wrapper with components dict (legacy format)
+        elif hasattr(self.generator, 'components') and isinstance(self.generator.components, dict):
             components = self.generator.components
             if 'mapping' in components:
                 self.mapping_network = components['mapping']
@@ -513,11 +348,6 @@ class StyleGAN2Wrapper(nn.Module):
             self.mapping_network = self.generator.style
             self.synthesis_network = self.generator
             logger.info("Detected rosinality format")
-        # Check for standard PyTorch format (mapping and synthesis as attributes)
-        elif hasattr(self.generator, 'mapping') and hasattr(self.generator, 'synthesis'):
-            self.mapping_network = self.generator.mapping
-            self.synthesis_network = self.generator.synthesis
-            logger.info("Detected standard format")
         else:
             # Assume the generator is the synthesis network
             self.mapping_network = None

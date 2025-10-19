@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def load_image(
     image_path: str,
-    size: Tuple[int, int] = (1024, 1024),
+    size: Tuple[int, int] = (128, 128),
     device: Optional[torch.device] = None
 ) -> torch.Tensor:
     """
@@ -27,7 +27,7 @@ def load_image(
 
     Args:
         image_path: Path to image file
-        size: Target size (H, W)
+        size: Target size (H, W), default (128, 128)
         device: Target device (defaults to CPU)
 
     Returns:
@@ -38,9 +38,9 @@ def load_image(
         ValueError: If image cannot be loaded
 
     Example:
-        >>> img = load_image('data/face.png', size=(1024, 1024), device='cuda')
+        >>> img = load_image('data/face.png', size=(128, 128), device='cuda')
         >>> img.shape
-        torch.Size([1, 3, 1024, 1024])
+        torch.Size([1, 3, 128, 128])
     """
     image_path = Path(image_path)
     
@@ -129,7 +129,7 @@ def save_image(
 
 def load_images_from_folder(
     folder_path: str,
-    size: Tuple[int, int] = (1024, 1024),
+    size: Tuple[int, int] = (128, 128),
     device: Optional[torch.device] = None,
     extensions: Tuple[str, ...] = ('.png', '.jpg', '.jpeg', '.bmp', '.tiff')
 ) -> List[Tuple[str, torch.Tensor]]:
@@ -138,7 +138,7 @@ def load_images_from_folder(
 
     Args:
         folder_path: Path to folder containing images
-        size: Target size (H, W)
+        size: Target size (H, W), default (128, 128)
         device: Target device
         extensions: Tuple of valid file extensions
 
@@ -150,7 +150,7 @@ def load_images_from_folder(
         ValueError: If no valid images found
 
     Example:
-        >>> images = load_images_from_folder('data/samples/', size=(1024, 1024))
+        >>> images = load_images_from_folder('data/samples/', size=(128, 128))
         >>> len(images)
         5
     """

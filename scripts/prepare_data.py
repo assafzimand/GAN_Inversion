@@ -137,10 +137,10 @@ def generate_synthetic_images(output_dir: Path, count: int = 5):
     
     patterns = ['gradient', 'checkerboard', 'solid']
     
-    print(f"Generating {count} synthetic test images...")
+    print(f"Generating {count} synthetic test images (128×128)...")
     for i in range(count):
         pattern = patterns[i % len(patterns)]
-        img = create_synthetic_image(size=1024, index=i, pattern=pattern)
+        img = create_synthetic_image(size=128, index=i, pattern=pattern)
         
         filename = f"test_image_{i + 1:02d}.png"
         filepath = output_dir / filename
@@ -216,7 +216,7 @@ def show_download_instructions():
     print("Quick Setup:")
     print("  1. Download 3-5 sample images (any resolution)")
     print("  2. Place them in: data/samples/")
-    print("  3. The inversion script will automatically resize them to 1024x1024")
+    print("  3. The inversion script will automatically resize them to 128×128")
     print()
     print("Alternative - Generate Test Images:")
     print("  python scripts/prepare_data.py --mode generate --count 5")

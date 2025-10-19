@@ -28,7 +28,7 @@ from engine.inverter import run_inversion
 from engine.metrics import compute_all_metrics
 from utils.seed import set_seed
 from utils.image_io import load_image, save_image, load_images_from_folder
-from utils.viz import create_comparison_panel, plot_loss_curve
+from utils.viz import create_comparison_panel, create_evolution_panel, plot_loss_curve
 
 # Configure logging
 logging.basicConfig(
@@ -68,14 +68,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--weights',
         type=str,
-        default='checkpoints/stylegan2-ffhq-1024x1024.pt',
-        help='Path to pretrained StyleGAN2 weights'
+        default=None,
+        help='Path to pretrained StyleGAN2 weights (defaults to config file)'
     )
     parser.add_argument(
         '--image_size',
         type=int,
-        default=1024,
-        help='Image resolution (assumes square images)'
+        default=None,
+        help='Image resolution (defaults to config file, currently 128×128)'
     )
     
     # Inversion Settings
@@ -217,10 +217,22 @@ def load_config(args: argparse.Namespace) -> Dict[str, Any]:
         if value is not None:
             config[key] = value
     
-    # Set default output dir if not specified
-    if config.get('output_dir') is None:
+    # Set default output dir if not specified or is generic "outputs"
+    # (meaning no specific output dir was set)
+    if config.get('output_dir') is None or config.get('output_dir') == 'outputs':
+        # Extract combo name from experiment_name or preset
+        combo_name = config.get('experiment_name', 'default')
+        if args.preset:
+            combo_name = args.preset
+        
+        # Get image name from input path (will be set later if folder)
+        image_name = 'multi'
+        if args.input and Path(args.input).is_file():
+            image_name = Path(args.input).stem
+        
+        # Create unique directory name
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        config['output_dir'] = f"outputs/run_{timestamp}"
+        config['output_dir'] = f"outputs/{combo_name}_{image_name}_{timestamp}"
     
     return config
 
@@ -278,10 +290,11 @@ def process_single_image(
     save_image(reconstruction, str(recon_path))
     logger.info(f"Saved reconstruction: {recon_path}")
     
-    # Save comparison panel
-    comp_path = diff_dir / f"{stem}_comparison.png"
-    create_comparison_panel(image_tensor, reconstruction, str(comp_path))
-    logger.info(f"Saved comparison: {comp_path}")
+    # Save evolution panel (showing progress over iterations with metrics)
+    comp_path = diff_dir / f"{stem}_evolution.png"
+    intermediates = history.get('intermediates', {})
+    create_evolution_panel(image_tensor, intermediates, metrics, str(comp_path))
+    logger.info(f"Saved evolution panel: {comp_path}")
     
     # Log metrics
     logger.info(
@@ -419,10 +432,11 @@ def main():
             title=f"Loss Curve - {result['image_name']}"
         )
         
-        # Save raw loss history
+        # Save raw loss history (exclude intermediates - they're images, not JSON-serializable)
         loss_history_path = output_dir / f"{stem}_loss_history.json"
+        history_for_json = {k: v for k, v in result['history'].items() if k != 'intermediates'}
         with open(loss_history_path, 'w') as f:
-            json.dump(result['history'], f, indent=2)
+            json.dump(history_for_json, f, indent=2)
         
         logger.info(f"Saved loss outputs for {result['image_name']}")
     

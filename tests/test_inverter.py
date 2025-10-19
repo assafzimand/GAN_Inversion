@@ -24,7 +24,7 @@ from engine.inverter import run_inversion, initialize_latent
 class MockStyleGAN2Wrapper(nn.Module):
     """Mock StyleGAN2 wrapper for testing inversion."""
     
-    def __init__(self, latent_dim=512, num_layers=18, image_size=64):
+    def __init__(self, latent_dim=512, num_layers=18, image_size=128):
         super().__init__()
         self.latent_dim = latent_dim
         self.num_layers = num_layers
@@ -72,7 +72,8 @@ class MockStyleGAN2Wrapper(nn.Module):
         
         x = self.upsample(x)  # 32x32
         x = self.upsample(x)  # 64x64
-        x = torch.tanh(self.conv3(x))
+        x = self.upsample(x)  # 128x128
+        x = torch.tanh(self.conv3(x))  # Output: 128x128
         
         return x
     
@@ -228,7 +229,7 @@ class TestInversionEngine:
         generator.eval()
         
         # Create a target image
-        target = (torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8  # [-0.8, 0.8]
+        target = (torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8  # [-0.8, 0.8]
         
         config = {
             'latent_space': 'W',
@@ -284,7 +285,7 @@ class TestInversionEngine:
         """Test inversion in W+ space."""
         device = torch.device('cpu')
         generator = MockStyleGAN2Wrapper()
-        target = (torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8  # [-0.8, 0.8]
+        target = (torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8  # [-0.8, 0.8]
         
         config = {
             'latent_space': 'W+',
@@ -305,7 +306,7 @@ class TestInversionEngine:
         """Test inversion with LPIPS loss."""
         device = torch.device('cpu')
         generator = MockStyleGAN2Wrapper()
-        target = torch.randn(1, 3, 64, 64).clamp(-1, 1)
+        target = torch.randn(1, 3, 128, 128).clamp(-1, 1)
         
         config = {
             'latent_space': 'W',
@@ -327,7 +328,7 @@ class TestInversionEngine:
         """Test inversion with mean_w initialization."""
         device = torch.device('cpu')
         generator = MockStyleGAN2Wrapper()
-        target = (torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8  # [-0.8, 0.8]
+        target = (torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8  # [-0.8, 0.8]
         mean_w = torch.zeros(1, 512)  # Use zero mean for determinism
         
         config = {
@@ -376,7 +377,7 @@ class TestInversionEngine:
         """Test that history is properly tracked."""
         device = torch.device('cpu')
         generator = MockStyleGAN2Wrapper()
-        target = (torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8  # [-0.8, 0.8]
+        target = (torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8  # [-0.8, 0.8]
         
         config = {
             'latent_space': 'W',
@@ -407,7 +408,7 @@ class TestInversionEngine:
     def test_invalid_latent_space(self):
         """Test that invalid latent_space raises ValueError."""
         generator = MockStyleGAN2Wrapper()
-        target = torch.randn(1, 3, 64, 64)
+        target = torch.randn(1, 3, 128, 128)
         
         config = {
             'latent_space': 'Z',  # Invalid
@@ -422,7 +423,7 @@ class TestInversionEngine:
     def test_invalid_init_method(self):
         """Test that invalid init_method raises ValueError."""
         generator = MockStyleGAN2Wrapper()
-        target = torch.randn(1, 3, 64, 64)
+        target = torch.randn(1, 3, 128, 128)
         
         config = {
             'latent_space': 'W',
@@ -437,7 +438,7 @@ class TestInversionEngine:
     def test_invalid_loss_type(self):
         """Test that invalid loss_type raises ValueError."""
         generator = MockStyleGAN2Wrapper()
-        target = torch.randn(1, 3, 64, 64)
+        target = torch.randn(1, 3, 128, 128)
         
         config = {
             'latent_space': 'W',
@@ -454,14 +455,14 @@ class TestInversionEngine:
         generator = MockStyleGAN2Wrapper()
         
         # 3D tensor (missing batch dimension)
-        target_3d = torch.randn(3, 64, 64)
+        target_3d = torch.randn(3, 128, 128)
         config = {'latent_space': 'W', 'init_method': 'random', 'loss_type': 'l2', 'steps': 10}
         
         with pytest.raises(ValueError, match="target_image must be 4D"):
             run_inversion(generator, target_3d, config)
         
         # Batch size > 1
-        target_batch = torch.randn(2, 3, 64, 64)
+        target_batch = torch.randn(2, 3, 128, 128)
         
         with pytest.raises(ValueError, match="batch size must be 1"):
             run_inversion(generator, target_batch, config)
@@ -471,7 +472,7 @@ class TestInversionEngine:
         """Test that inversion works on GPU."""
         device = torch.device('cuda')
         generator = MockStyleGAN2Wrapper().to(device)
-        target = ((torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8).to(device)  # [-0.8, 0.8]
+        target = ((torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8).to(device)  # [-0.8, 0.8]
         
         config = {
             'latent_space': 'W',
@@ -493,7 +494,7 @@ class TestInversionEngine:
         """Test that gradients flow properly during optimization."""
         device = torch.device('cpu')
         generator = MockStyleGAN2Wrapper()
-        target = (torch.rand(1, 3, 64, 64) * 2 - 1) * 0.8  # [-0.8, 0.8]
+        target = (torch.rand(1, 3, 128, 128) * 2 - 1) * 0.8  # [-0.8, 0.8]
         
         config = {
             'latent_space': 'W',

@@ -2,12 +2,16 @@
 
 Minimal, modular implementation of optimization-based GAN inversion using pretrained StyleGAN2.
 
+Uses **HuggingFace StyleGAN2-FFHQ-128** (128×128 resolution) for fast experimentation.
+
 ## Features
 - Latent spaces: **W** and **W+**
 - Loss functions: **L2** (pixel), **LPIPS** (perceptual)
 - Initializations: **mean_w**, encoder-based (final stage)
 - Quantitative metrics: **PSNR, SSIM, LPIPS**
+- Evolution visualization: see optimization progress every 100 steps
 - Reproducible experiments with configs and seeding
+- Automatic model downloading from HuggingFace Hub
 
 ## Installation
 
@@ -28,9 +32,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Download pretrained StyleGAN2-FFHQ weights
-bash scripts/download_weights.sh
+# (Optional) Generate synthetic test images
+python scripts/prepare_data.py --mode generate --count 3
 ```
+
+**Note:** Pretrained StyleGAN2 weights are automatically downloaded from HuggingFace Hub on first run.
 
 ## Quickstart
 
@@ -45,6 +51,17 @@ Run on a folder of images:
 ```bash
 python invert.py --input data/samples/ --preset combo_02
 ```
+
+### Model Details
+
+**Generator:** `hajar001/stylegan2-ffhq-128` from HuggingFace Hub  
+**Architecture:** StyleGAN2 with 12 layers  
+**Resolution:** 128×128 pixels  
+**Latent Dimensions:** 
+- W space: `[1, 512]`
+- W+ space: `[1, 12, 512]` (per-layer control)
+
+Images are automatically resized to 128×128 during loading.
 
 ### Using Experiment Presets
 
@@ -96,17 +113,20 @@ python invert.py \
 
 ### Output Structure
 
-Each run creates a timestamped directory `outputs/run_YYYYMMDD_HHMMSS/` containing:
+Each run creates a unique directory `outputs/{combo}_{image}_{timestamp}/` containing:
 ```
-outputs/run_20250119_143052/
-├── config.yaml              # Full configuration used
-├── originals/               # Original input images
-├── reconstructions/         # Generated reconstructions
-├── comparisons/             # Side-by-side comparison panels
-├── metrics.json             # PSNR, SSIM, LPIPS per image
-├── <name>_loss_curve.png    # Loss convergence plot
-└── <name>_loss_history.json # Raw loss values per step
+outputs/combo_01_test_image_01_20251019_143052/
+├── config.yaml                     # Full configuration used
+├── originals/                      # Original input images
+├── reconstructions/                # Final generated reconstructions
+├── comparisons/
+│   └── <name>_evolution.png        # Evolution panel: original + steps 0,100,200,... with metrics
+├── metrics.json                    # PSNR, SSIM, LPIPS per image
+├── <name>_loss_curve.png           # Loss convergence plot
+└── <name>_loss_history.json        # Raw loss values per step
 ```
+
+**Evolution Panel:** Shows the original image alongside reconstructions at iterations 0, 100, 200, etc., with final metrics (PSNR, SSIM, LPIPS) displayed in the title.
 
 ## Experiments
 

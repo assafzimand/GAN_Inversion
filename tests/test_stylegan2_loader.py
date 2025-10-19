@@ -81,7 +81,8 @@ class TestStyleGAN2Wrapper:
     def test_wrapper_initialization(self):
         """Test wrapper initializes correctly."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         assert wrapper.latent_dim == 512
         assert wrapper.num_layers == 18
@@ -91,7 +92,8 @@ class TestStyleGAN2Wrapper:
     def test_w_space_forward(self):
         """Test forward pass with W space latent."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # W space: [B, latent_dim]
         w = torch.randn(2, 512)
@@ -103,7 +105,8 @@ class TestStyleGAN2Wrapper:
     def test_w_plus_space_forward(self):
         """Test forward pass with W+ space latent."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # W+ space: [B, num_layers, latent_dim]
         w_plus = torch.randn(2, 18, 512)
@@ -115,7 +118,8 @@ class TestStyleGAN2Wrapper:
     def test_w_space_shape_validation(self):
         """Test W space shape validation."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # Wrong number of dimensions
         with pytest.raises(ValueError, match="W space latent must be 2D"):
@@ -128,7 +132,8 @@ class TestStyleGAN2Wrapper:
     def test_w_plus_space_shape_validation(self):
         """Test W+ space shape validation."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # Wrong number of dimensions (1D or 4D+)
         with pytest.raises(ValueError, match="W\\+ space latent must be 2D"):
@@ -149,7 +154,8 @@ class TestStyleGAN2Wrapper:
     def test_invalid_latent_space(self):
         """Test error for invalid latent space."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         with pytest.raises(ValueError, match="latent_space must be"):
             wrapper(torch.randn(2, 512), latent_space='Z')
@@ -157,7 +163,8 @@ class TestStyleGAN2Wrapper:
     def test_return_latents(self):
         """Test returning latents along with image."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         w = torch.randn(2, 512)
         img, latents = wrapper(w, latent_space='W', return_latents=True)
@@ -168,7 +175,8 @@ class TestStyleGAN2Wrapper:
     def test_map_to_w(self):
         """Test Z to W mapping."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         z = torch.randn(4, 512)
         w = wrapper.map_to_w(z)
@@ -178,7 +186,8 @@ class TestStyleGAN2Wrapper:
     def test_generate_from_z(self):
         """Test direct generation from Z space."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         z = torch.randn(2, 512)
         
@@ -193,7 +202,8 @@ class TestStyleGAN2Wrapper:
     def test_device_handling(self):
         """Test that wrapper works with different devices."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # CPU
         w_cpu = torch.randn(1, 512)
@@ -210,7 +220,8 @@ class TestStyleGAN2Wrapper:
     def test_repr(self):
         """Test string representation."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         repr_str = repr(wrapper)
         assert 'StyleGAN2Wrapper' in repr_str
@@ -224,7 +235,8 @@ class TestComputeMeanW:
     def test_compute_mean_w_shape(self):
         """Test mean_w has correct shape."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         mean_w = compute_mean_w(wrapper, num_samples=100, batch_size=50)
         
@@ -233,7 +245,8 @@ class TestComputeMeanW:
     def test_compute_mean_w_reproducibility(self):
         """Test mean_w is reproducible with seed."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         mean_w1 = compute_mean_w(wrapper, num_samples=100, batch_size=50, seed=42)
         mean_w2 = compute_mean_w(wrapper, num_samples=100, batch_size=50, seed=42)
@@ -243,7 +256,8 @@ class TestComputeMeanW:
     def test_compute_mean_w_different_seeds(self):
         """Test different seeds give different results."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         mean_w1 = compute_mean_w(wrapper, num_samples=100, batch_size=50, seed=42)
         mean_w2 = compute_mean_w(wrapper, num_samples=100, batch_size=50, seed=123)
@@ -253,7 +267,8 @@ class TestComputeMeanW:
     def test_compute_mean_w_device(self):
         """Test mean_w computation on different devices."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # CPU
         mean_w_cpu = compute_mean_w(
@@ -272,7 +287,8 @@ class TestComputeMeanW:
     def test_compute_mean_w_batch_sizes(self):
         """Test with different batch sizes."""
         generator = MockGenerator()
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         # Same seed, different batch sizes should give same result
         mean_w1 = compute_mean_w(wrapper, num_samples=100, batch_size=25, seed=42)
@@ -310,7 +326,8 @@ class TestEdgeCases:
     def test_batch_size_one(self):
         """Test with batch size of 1."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         w = torch.randn(1, 512)
         img = wrapper(w, latent_space='W')
@@ -320,7 +337,8 @@ class TestEdgeCases:
     def test_large_batch(self):
         """Test with larger batch size."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         w = torch.randn(16, 512)
         img = wrapper(w, latent_space='W')
@@ -330,7 +348,8 @@ class TestEdgeCases:
     def test_gradient_flow(self):
         """Test gradients flow through wrapper."""
         generator = MockGenerator(latent_dim=512, num_layers=18, img_size=64)
-        wrapper = StyleGAN2Wrapper(generator, latent_dim=512, num_layers=18)
+        device = torch.device('cpu')
+        wrapper = StyleGAN2Wrapper(generator, device, latent_dim=512, num_layers=18)
         
         w = torch.randn(1, 512, requires_grad=True)
         img = wrapper(w, latent_space='W')
@@ -339,4 +358,33 @@ class TestEdgeCases:
         
         assert w.grad is not None
         assert w.grad.shape == w.shape
+
+
+class TestHuggingFaceIntegration:
+    """Test HuggingFace model loading (requires internet)."""
+    
+    @pytest.mark.skip(reason="Requires internet and takes time to download")
+    def test_hf_loading(self):
+        """Test loading model from HuggingFace Hub."""
+        device = torch.device('cpu')
+        
+        # This would download the model (skip in CI)
+        G = load_generator("hf://hajar001/stylegan2-ffhq-128", device)
+        
+        assert isinstance(G, StyleGAN2Wrapper)
+        assert G.latent_dim == 512
+        assert G.num_layers == 12  # 128x128 model has 12 layers
+        
+        # Test generation
+        z = torch.randn(1, 512)
+        img = G.generate_from_z(z, latent_space='W')
+        assert img.shape == (1, 3, 128, 128)
+    
+    def test_hf_prefix_detection(self):
+        """Test that hf:// prefix is correctly detected."""
+        # This just tests the prefix detection, not actual loading
+        path = "hf://hajar001/stylegan2-ffhq-128"
+        assert path.startswith("hf://")
+        model_id = path[5:]
+        assert model_id == "hajar001/stylegan2-ffhq-128"
 

@@ -99,6 +99,98 @@ def create_comparison_panel(
     logger.debug(f"Saved comparison panel to: {save_path}")
 
 
+def create_evolution_panel(
+    original: torch.Tensor,
+    intermediates: Dict[int, torch.Tensor],
+    metrics: Optional[Dict[str, float]] = None,
+    save_path: Optional[str] = None
+) -> None:
+    """
+    Create multi-panel comparison showing evolution over iterations.
+    
+    Shows original image and reconstructions at different iterations
+    (every 100 steps including step 0) with metrics in the title.
+    
+    Args:
+        original: Original image [1, 3, H, W] or [3, H, W] in [-1, 1]
+        intermediates: Dict mapping step -> reconstruction tensor
+        metrics: Optional metrics dict with PSNR, SSIM, LPIPS
+        save_path: Path to save panel (required)
+    
+    Example:
+        >>> intermediates = {0: img0, 100: img100, 200: img200, 300: img300}
+        >>> metrics = {'psnr': 25.5, 'ssim': 0.85, 'lpips': 0.15}
+        >>> create_evolution_panel(orig, intermediates, metrics, 'out.png')
+    """
+    if save_path is None:
+        raise ValueError("save_path is required")
+    
+    if not intermediates:
+        raise ValueError("intermediates dict is empty")
+    
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Remove batch dimension if present
+    if original.dim() == 4:
+        original = original.squeeze(0)
+    
+    # Move to CPU and denormalize
+    original = original.detach().cpu()
+    original = (original + 1) / 2
+    original_np = original.permute(1, 2, 0).numpy()
+    
+    # Sort intermediate steps
+    steps = sorted(intermediates.keys())
+    n_intermediates = len(steps)
+    
+    # Create figure: original + intermediates
+    n_panels = n_intermediates + 1
+    fig, axes = plt.subplots(1, n_panels, figsize=(n_panels * 3, 3))
+    
+    # Handle single panel case
+    if n_panels == 1:
+        axes = [axes]
+    
+    # Plot original
+    axes[0].imshow(original_np)
+    axes[0].set_title('Original', fontsize=12, fontweight='bold')
+    axes[0].axis('off')
+    
+    # Plot intermediates
+    for idx, step in enumerate(steps):
+        intermediate = intermediates[step]
+        
+        # Remove batch dimension and process
+        if intermediate.dim() == 4:
+            intermediate = intermediate.squeeze(0)
+        
+        intermediate = intermediate.detach().cpu()
+        intermediate = (intermediate + 1) / 2
+        intermediate_np = intermediate.permute(1, 2, 0).numpy()
+        
+        axes[idx + 1].imshow(intermediate_np)
+        axes[idx + 1].set_title(f'Step {step}', fontsize=12, fontweight='bold')
+        axes[idx + 1].axis('off')
+    
+    # Add metrics to suptitle if provided
+    if metrics:
+        psnr = metrics.get('psnr', 0)
+        ssim = metrics.get('ssim', 0)
+        lpips = metrics.get('lpips', 0)
+        title = f'Inversion Evolution  |  PSNR: {psnr:.2f} dB  |  SSIM: {ssim:.4f}  |  LPIPS: {lpips:.4f}'
+    else:
+        title = 'Inversion Evolution'
+    
+    fig.suptitle(title, fontsize=14, fontweight='bold', y=1.02)
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    
+    logger.debug(f"Saved evolution panel to: {save_path}")
+
+
 def plot_loss_curve(
     history: Dict[str, Any],
     save_path: str,

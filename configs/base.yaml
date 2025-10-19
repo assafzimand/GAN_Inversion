@@ -4,12 +4,12 @@
 # Paths
 input_path: null  # Set via CLI
 output_dir: "outputs"
-weights_path: "checkpoints/stylegan2-ffhq-1024x1024.pkl"
+weights_path: "hf://hajar001/stylegan2-ffhq-128"  # HuggingFace model
 
 # Model settings
-image_size: 1024
+image_size: 128  # 128x128 for faster experimentation
 latent_dim: 512
-num_layers: 18  # For W+ space
+num_layers: 12  # For W+ space (128x128 model has 12 layers)
 
 # Default inversion settings
 latent_space: "W"  # W or W+

@@ -12,7 +12,7 @@ combo_01:
   optimizer: "adam"
   learning_rate: 0.01
   steps: 300
-  output_dir: "outputs/combo_01"
+  # output_dir: auto-generated with combo name + image name + timestamp
 
 # Combo 2: W+ • L2 • Adam • mean_w • 300 steps
 # Purpose: Flip latent space only (more expressive, per-layer control)
@@ -24,7 +24,7 @@ combo_02:
   optimizer: "adam"
   learning_rate: 0.01
   steps: 300
-  output_dir: "outputs/combo_02"
+  # output_dir: auto-generated with combo name + image name + timestamp
 
 # Combo 3: W+ • LPIPS • Adam • mean_w • 600 steps
 # Purpose: Change loss to perceptual (better quality, needs more steps)
@@ -36,7 +36,7 @@ combo_03:
   optimizer: "adam"
   learning_rate: 0.01
   steps: 600
-  output_dir: "outputs/combo_03"
+  # output_dir: auto-generated with combo name + image name + timestamp
 
 # Combo 4: W+ • LPIPS • Adam • encoder-init • 200-300 steps
 # Purpose: Add encoder init to reduce steps (to be implemented in final stage)
@@ -49,7 +49,7 @@ combo_04:
   optimizer: "adam"
   learning_rate: 0.01
   steps: 300
-  output_dir: "outputs/combo_04"
+  # output_dir: auto-generated with combo name + image name + timestamp
   # encoder_type: "e4e"  # To be added later
   # encoder_weights: "checkpoints/e4e_ffhq_encode.pt"
 
