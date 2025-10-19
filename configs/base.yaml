@@ -4,7 +4,7 @@
 # Paths
 input_path: null  # Set via CLI
 output_dir: "outputs"
-weights_path: "checkpoints/stylegan2-ffhq-1024x1024.pt"
+weights_path: "checkpoints/stylegan2-ffhq-1024x1024.pkl"
 
 # Model settings
 image_size: 1024
