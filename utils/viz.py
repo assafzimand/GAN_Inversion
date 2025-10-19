@@ -1,46 +1,106 @@
 """
 Visualization utilities for creating comparison panels and loss curves.
 
-TODO:
-    - Implement create_comparison_panel(original, reconstruction, diff) -> panel
-    - Implement plot_loss_curve(history, save_path)
-    - Support side-by-side visualizations
-    - Add titles and labels to plots
-    - Handle different image sizes gracefully
+Provides functions to create side-by-side comparisons, plot loss curves,
+and save image grids for analysis.
 """
 
-from typing import Dict, List, Optional
-import torch
+from typing import Dict, List, Optional, Any
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend (must be before pyplot)
 import matplotlib.pyplot as plt
+import torch
 from pathlib import Path
+import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_comparison_panel(
     original: torch.Tensor,
     reconstruction: torch.Tensor,
     save_path: Optional[str] = None
-) -> torch.Tensor:
+) -> None:
     """
     Create side-by-side comparison panel with difference map.
 
+    Creates a 3-panel visualization:
+    - Left: Original image
+    - Center: Reconstruction
+    - Right: Absolute difference (scaled for visibility)
+
     Args:
-        original: Original image [3, H, W] in [-1, 1]
-        reconstruction: Reconstructed image [3, H, W] in [-1, 1]
-        save_path: Optional path to save panel
+        original: Original image [1, 3, H, W] or [3, H, W] in [-1, 1]
+        reconstruction: Reconstructed image [1, 3, H, W] or [3, H, W] in [-1, 1]
+        save_path: Path to save panel (required)
 
-    Returns:
-        Panel tensor [3, H, W*3]
+    Raises:
+        ValueError: If shapes don't match or save_path not provided
 
-    TODO:
-        - Create 3-panel layout: original | reconstruction | abs diff
-        - Add labels/titles
-        - Optionally save to file
+    Example:
+        >>> create_comparison_panel(orig, recon, 'output/comparison.png')
     """
-    raise NotImplementedError("create_comparison_panel not yet implemented")
+    if save_path is None:
+        raise ValueError("save_path is required")
+    
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Remove batch dimension if present
+    if original.dim() == 4:
+        original = original.squeeze(0)
+    if reconstruction.dim() == 4:
+        reconstruction = reconstruction.squeeze(0)
+    
+    if original.shape != reconstruction.shape:
+        raise ValueError(f"Shape mismatch: {original.shape} vs {reconstruction.shape}")
+    
+    # Move to CPU and convert to numpy
+    original = original.detach().cpu()
+    reconstruction = reconstruction.detach().cpu()
+    
+    # Denormalize from [-1, 1] to [0, 1]
+    original = (original + 1) / 2
+    reconstruction = (reconstruction + 1) / 2
+    
+    # Compute absolute difference
+    diff = torch.abs(original - reconstruction)
+    
+    # Convert to numpy and transpose to HWC format
+    original_np = original.permute(1, 2, 0).numpy()
+    reconstruction_np = reconstruction.permute(1, 2, 0).numpy()
+    diff_np = diff.permute(1, 2, 0).numpy()
+    
+    # Create figure with 3 subplots
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    # Original
+    axes[0].imshow(original_np)
+    axes[0].set_title('Original', fontsize=14, fontweight='bold')
+    axes[0].axis('off')
+    
+    # Reconstruction
+    axes[1].imshow(reconstruction_np)
+    axes[1].set_title('Reconstruction', fontsize=14, fontweight='bold')
+    axes[1].axis('off')
+    
+    # Difference (scaled for visibility)
+    diff_scaled = diff_np * 5  # Amplify for visibility
+    diff_scaled = np.clip(diff_scaled, 0, 1)
+    axes[2].imshow(diff_scaled)
+    axes[2].set_title('Difference (×5)', fontsize=14, fontweight='bold')
+    axes[2].axis('off')
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    
+    logger.debug(f"Saved comparison panel to: {save_path}")
 
 
 def plot_loss_curve(
-    history: Dict[str, List[float]],
+    history: Dict[str, Any],
     save_path: str,
     title: str = "Inversion Loss Curve"
 ) -> None:
@@ -52,12 +112,49 @@ def plot_loss_curve(
         save_path: Path to save plot (PNG)
         title: Plot title
 
-    TODO:
-        - Plot loss vs. step
-        - Add grid, labels, title
-        - Save to file
+    Raises:
+        ValueError: If history doesn't contain 'loss' key
+
+    Example:
+        >>> history = {'loss': [1.0, 0.8, 0.6, 0.5]}
+        >>> plot_loss_curve(history, 'outputs/loss.png')
     """
-    raise NotImplementedError("plot_loss_curve not yet implemented")
+    if 'loss' not in history:
+        raise ValueError("history must contain 'loss' key")
+    
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    losses = history['loss']
+    steps = list(range(1, len(losses) + 1))
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # Plot loss
+    ax.plot(steps, losses, linewidth=2, color='#2E86AB', alpha=0.8)
+    ax.set_xlabel('Step', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Loss', fontsize=12, fontweight='bold')
+    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.grid(True, alpha=0.3, linestyle='--')
+    
+    # Add final loss annotation
+    final_loss = losses[-1]
+    ax.annotate(
+        f'Final: {final_loss:.6f}',
+        xy=(len(losses), final_loss),
+        xytext=(10, 10),
+        textcoords='offset points',
+        fontsize=10,
+        bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.7),
+        arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0')
+    )
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    
+    logger.debug(f"Saved loss curve to: {save_path}")
 
 
 def save_grid(
@@ -70,12 +167,69 @@ def save_grid(
     Save multiple images in a grid layout.
 
     Args:
-        images: List of image tensors [3, H, W]
+        images: List of image tensors [3, H, W] or [1, 3, H, W]
         save_path: Output path
         nrow: Number of images per row
         titles: Optional titles for each image
 
-    TODO: Implement grid visualization
+    Example:
+        >>> images = [torch.randn(3, 256, 256) for _ in range(8)]
+        >>> save_grid(images, 'output/grid.png', nrow=4)
     """
-    raise NotImplementedError("save_grid not yet implemented")
+    if not images:
+        raise ValueError("images list is empty")
+    
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Process images
+    processed = []
+    for img in images:
+        if img.dim() == 4:
+            img = img.squeeze(0)
+        
+        img = img.detach().cpu()
+        
+        # Denormalize if needed
+        if img.min() < -0.1:  # Likely in [-1, 1]
+            img = (img + 1) / 2
+        
+        img = img.permute(1, 2, 0).numpy()
+        processed.append(img)
+    
+    # Calculate grid dimensions
+    n_images = len(processed)
+    ncol = nrow
+    nrow_actual = (n_images + ncol - 1) // ncol
+    
+    # Create figure
+    fig, axes = plt.subplots(nrow_actual, ncol, figsize=(ncol * 3, nrow_actual * 3))
+    
+    # Handle single row/column cases
+    if nrow_actual == 1 and ncol == 1:
+        axes = np.array([[axes]])
+    elif nrow_actual == 1:
+        axes = axes.reshape(1, -1)
+    elif ncol == 1:
+        axes = axes.reshape(-1, 1)
+    
+    # Plot images
+    for idx in range(nrow_actual * ncol):
+        row = idx // ncol
+        col = idx % ncol
+        ax = axes[row, col]
+        
+        if idx < n_images:
+            ax.imshow(processed[idx])
+            if titles and idx < len(titles):
+                ax.set_title(titles[idx], fontsize=10)
+            ax.axis('off')
+        else:
+            ax.axis('off')
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    
+    logger.debug(f"Saved grid to: {save_path}")
 
