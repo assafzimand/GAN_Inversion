@@ -18,7 +18,7 @@ loss_type: "l2"  # l2 or lpips
 
 # Optimization
 optimizer: "adam"
-learning_rate: 0.01
+learning_rate: 0.03
 steps: 600
 betas: [0.9, 0.999]
 

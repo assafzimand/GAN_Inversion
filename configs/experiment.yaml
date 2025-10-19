@@ -10,7 +10,7 @@ combo_01:
   loss_type: "l2"
   init_method: "mean_w"
   optimizer: "adam"
-  learning_rate: 0.01
+  learning_rate: 0.03
   steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
@@ -22,7 +22,7 @@ combo_02:
   loss_type: "l2"
   init_method: "mean_w"
   optimizer: "adam"
-  learning_rate: 0.01
+  learning_rate: 0.03
   steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
@@ -34,22 +34,27 @@ combo_03:
   loss_type: "lpips"
   init_method: "mean_w"
   optimizer: "adam"
-  learning_rate: 0.01
+  learning_rate: 0.03
   steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
-# Combo 4: W+ • LPIPS • Adam • encoder-init • 200-300 steps
-# Purpose: Add encoder init to reduce steps (to be implemented in final stage)
-# NOTE: encoder init not yet available - will be added in stage 4
+# Combo 4: W • LPIPS • Adam • encoder-init • 300 steps
+# Purpose: Encoder-based initialization with W space (compatible with e4e/pSp encoders)
+# NOTE: Uses pre-trained 1024×1024 encoders (e4e/pSp) with upscaling
+#       Images are upscaled 128×128 → 1024×1024, then encoded to W space
 combo_04:
-  experiment_name: "combo_04_wplus_lpips_e4e_300"
-  latent_space: "W+"
+  experiment_name: "combo_04_w_lpips_encoder_300"
+  latent_space: "W"  # W space for perfect compatibility with standard encoders
   loss_type: "lpips"
-  init_method: "encoder"  # TODO: Implement encoder initialization
+  init_method: "encoder"  # Encoder-based initialization (e4e or pSp)
   optimizer: "adam"
   learning_rate: 0.01
-  steps: 300
+  steps: 300  # Fewer steps needed with encoder warm-start
   # output_dir: auto-generated with combo name + image name + timestamp
-  # encoder_type: "e4e"  # To be added later
-  # encoder_weights: "checkpoints/e4e_ffhq_encode.pt"
+  
+  # Encoder configuration is loaded from configs/init/encoder.yaml
+  # To use this combo:
+  #   1. Download e4e or pSp encoder weights (see README)
+  #   2. Place in checkpoints/ directory
+  #   3. Configure path in configs/init/encoder.yaml
 

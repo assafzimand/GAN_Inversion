@@ -1,0 +1,41 @@
+# Encoder-based initialization configuration
+# 
+# Uses pre-trained encoders (e4e or pSp) designed for 1024×1024 StyleGAN2.
+# Images are automatically upscaled from 128×128 → 1024×1024 before encoding.
+# W+ output is averaged to W space for compatibility with our 12-layer generator.
+
+# Encoder type
+encoder_type: "e4e"  # Options: "e4e", "psp", "simple_encoder"
+
+# Model paths - DOWNLOAD THESE FIRST (see README)
+encoder_checkpoint: "checkpoints/e4e_ffhq_encode.pt"  # Path to e4e encoder weights
+# Alternative: pSp encoder
+# encoder_checkpoint: "checkpoints/psp_ffhq_encode.pt"
+
+# Encoder settings
+encoder_config:
+  # Input/output dimensions
+  input_size: 1024  # Encoder expects 1024×1024 (images will be upscaled)
+  our_image_size: 128  # Our actual image size (will be upscaled internally)
+  output_dim: 512
+  num_layers_encoder: 18  # e4e/pSp output 18 layers for 1024×1024 StyleGAN
+  num_layers_ours: 12  # Our 128×128 generator has 12 layers
+  
+# Output space
+output_space: "W"  # W space for perfect compatibility (averaged from W+)
+
+# Encoder preprocessing
+normalize_input: true  # Normalize to [-1, 1]
+upscale_method: "bicubic"  # Upscaling interpolation method
+
+# Download links (see README for detailed instructions):
+# e4e: https://github.com/omertov/encoder4editing
+# pSp: https://github.com/eladrich/pixel2style2pixel
+
+# Strategy:
+# 1. Input: 128×128 image
+# 2. Upscale: 128×128 → 1024×1024 (bicubic interpolation)
+# 3. Encode: 1024×1024 → W+ [1, 18, 512] using pre-trained encoder
+# 4. Average: W+ [18, 512] → W [512] (average across all 18 layers)
+# 5. Use: W [512] as initialization for our 128×128 generator
+
