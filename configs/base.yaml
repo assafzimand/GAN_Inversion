@@ -1,0 +1,41 @@
+# Base configuration for GAN inversion
+# Override specific settings in experiment configs or via CLI
+
+# Paths
+input_path: null  # Set via CLI
+output_dir: "outputs"
+weights_path: "checkpoints/stylegan2-ffhq-1024x1024.pt"
+
+# Model settings
+image_size: 1024
+latent_dim: 512
+num_layers: 18  # For W+ space
+
+# Default inversion settings
+latent_space: "W"  # W or W+
+init_method: "mean_w"  # mean_w or random
+loss_type: "l2"  # l2 or lpips
+
+# Optimization
+optimizer: "adam"
+learning_rate: 0.01
+steps: 300
+betas: [0.9, 0.999]
+
+# Device
+device: "cuda"  # cuda or cpu
+
+# Logging
+log_interval: 50
+save_intermediate: false
+
+# Reproducibility
+seed: 42
+deterministic: true
+
+# Output options
+save_reconstructions: true
+save_diffs: true
+save_metrics: true
+save_loss_curve: true
+

@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# PyTorch & Models
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.npz
+checkpoints/
+
+# Data & Outputs
+outputs/
+data/*.jpg
+data/*.png
+data/*.jpeg
+!data/samples/.gitkeep
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Logs
+*.log
+logs/
+
+# Cursor
+.cursor/
+

@@ -1,0 +1,15 @@
+# Mean W initialization configuration
+# Used in combos 1, 2, 3
+
+init_method: "mean_w"
+
+# Mean W computation settings
+num_samples: 10000  # Number of Z samples to compute mean W
+batch_size: 1000    # Batch size for efficient sampling
+
+# Notes:
+# - Sample num_samples from Z ~ N(0, I)
+# - Map to W space via generator's mapping network
+# - Compute mean across all samples
+# - This provides a good "average face" starting point
+

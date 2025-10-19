@@ -1,0 +1,11 @@
+# LPIPS (perceptual) loss configuration
+
+loss_type: "lpips"
+
+# LPIPS-specific hyperparameters
+net: "alex"  # alex, vgg, or squeeze (alex is default and fastest)
+normalize: true  # Expect inputs in [-1, 1] range
+
+# LPIPS model settings
+spatial: false  # If true, returns per-pixel loss map instead of scalar
+

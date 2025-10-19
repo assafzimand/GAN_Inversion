@@ -1,0 +1,55 @@
+# Experiment presets for the 4 staged combos
+# Use via CLI: python invert.py --preset combo_01 --input path/to/image.png
+# Or override individual settings: python invert.py --preset combo_01 --steps 500
+
+# Combo 1: W • L2 • Adam • mean_w • 300 steps
+# Purpose: Cheapest sanity check, baseline for comparison
+combo_01:
+  experiment_name: "combo_01_w_l2_meanw_300"
+  latent_space: "W"
+  loss_type: "l2"
+  init_method: "mean_w"
+  optimizer: "adam"
+  learning_rate: 0.01
+  steps: 300
+  output_dir: "outputs/combo_01"
+
+# Combo 2: W+ • L2 • Adam • mean_w • 300 steps
+# Purpose: Flip latent space only (more expressive, per-layer control)
+combo_02:
+  experiment_name: "combo_02_wplus_l2_meanw_300"
+  latent_space: "W+"
+  loss_type: "l2"
+  init_method: "mean_w"
+  optimizer: "adam"
+  learning_rate: 0.01
+  steps: 300
+  output_dir: "outputs/combo_02"
+
+# Combo 3: W+ • LPIPS • Adam • mean_w • 600 steps
+# Purpose: Change loss to perceptual (better quality, needs more steps)
+combo_03:
+  experiment_name: "combo_03_wplus_lpips_meanw_600"
+  latent_space: "W+"
+  loss_type: "lpips"
+  init_method: "mean_w"
+  optimizer: "adam"
+  learning_rate: 0.01
+  steps: 600
+  output_dir: "outputs/combo_03"
+
+# Combo 4: W+ • LPIPS • Adam • encoder-init • 200-300 steps
+# Purpose: Add encoder init to reduce steps (to be implemented in final stage)
+# NOTE: encoder init not yet available - will be added in stage 4
+combo_04:
+  experiment_name: "combo_04_wplus_lpips_e4e_300"
+  latent_space: "W+"
+  loss_type: "lpips"
+  init_method: "encoder"  # TODO: Implement encoder initialization
+  optimizer: "adam"
+  learning_rate: 0.01
+  steps: 300
+  output_dir: "outputs/combo_04"
+  # encoder_type: "e4e"  # To be added later
+  # encoder_weights: "checkpoints/e4e_ffhq_encode.pt"
+

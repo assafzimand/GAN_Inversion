@@ -1,0 +1,11 @@
+# L2 (pixel-wise MSE) loss configuration
+
+loss_type: "l2"
+
+# L2-specific hyperparameters
+reduction: "mean"  # 'mean', 'sum', or 'none'
+
+# Optional: Add pixel-wise weighting if needed
+# weight_center: 1.0  # Weight for center pixels
+# weight_edges: 1.0   # Weight for edge pixels
+

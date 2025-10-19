@@ -1,0 +1,51 @@
+# Cursor Project Rules — Structure & Process
+
+## Repository Layout (must follow)
+.
+├─ configs/
+│  ├─ base.yaml
+│  ├─ losses/{l2.yaml, lpips.yaml}
+│  ├─ init/{mean_w.yaml, random_w.yaml, encoder.yaml (added later)}
+│  └─ experiment.yaml
+├─ data/                      # samples only (no heavy/raw in Git)
+├─ models/stylegan2_loader.py
+├─ losses/{l2.py, lpips_loss.py}
+├─ optim/optimizer_factory.py
+├─ engine/{inverter.py, metrics.py}
+├─ utils/{image_io.py, viz.py, seed.py}
+├─ scripts/{download_weights.sh, prepare_data.py}
+├─ tests/{test_losses.py, test_metrics.py, test_inverter.py}
+├─ notebooks/demo_inversion.ipynb
+├─ invert.py
+├─ README.md
+├─ PRD.md
+├─ requirements.txt
+├─ .gitignore
+└─ .cursorignore
+
+## Boundaries
+- **No core logic in notebooks**; notebooks are for demos only.
+- **No hardcoded absolute paths**; everything via configs/CLI.
+- **No heavyweight binaries in Git**; use `checkpoints/`, `outputs/` (gitignored).
+- Keep modules focused (single responsibility). Avoid god-objects.
+- **Staged features**: do **not** add encoder init until the final stage (combo 4).
+
+## Config & Repro
+- All tunables in YAML under `configs/` and overridable via CLI.
+- Global seeding utility (`utils/seed.py`), called by CLI before runs.
+
+## Documentation
+- Every module has top-level docstring and type hints.
+- README includes install, quickstart, experiments, troubleshooting.
+
+## Version Control
+- Small, focused commits; meaningful messages.
+- No committing datasets, checkpoints, or large outputs.
+
+## Ignore Rules
+- `.gitignore` must exclude: `outputs/`, `checkpoints/`, `__pycache__/`, `*.pt`, `*.pth`, `*.npz`.
+- `.cursorignore` mirrors heavy/unnecessary paths for indexing.
+
+## Quality Bar
+- Unit tests for losses/metrics and a toy inverter convergence test must pass.
+- Logging informative progress every N steps; graceful error messages.

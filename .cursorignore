@@ -1,0 +1,23 @@
+# Heavy directories to exclude from indexing
+outputs/
+checkpoints/
+data/
+logs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Cache
+__pycache__/
+.pytest_cache/
+*.ipynb_checkpoints/
+
+# Large model files
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.npz
+

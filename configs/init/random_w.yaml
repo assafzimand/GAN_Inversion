@@ -1,0 +1,15 @@
+# Random W initialization configuration
+# Alternative to mean_w (not used in main experiments)
+
+init_method: "random"
+
+# Random initialization settings
+distribution: "normal"  # normal or uniform
+std: 1.0                # Standard deviation for normal distribution
+mean: 0.0               # Mean for normal distribution
+
+# Notes:
+# - Sample directly from N(0, I) in W space
+# - May require more steps to converge than mean_w
+# - Useful for ablation studies
+
