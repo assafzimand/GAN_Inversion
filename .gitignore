@@ -16,6 +16,8 @@ ENV/
 *.ckpt
 *.npz
 checkpoints/
+cursor/
+
 
 # Data & Outputs
 outputs/
