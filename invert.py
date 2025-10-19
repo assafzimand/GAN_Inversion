@@ -83,34 +83,34 @@ def parse_args() -> argparse.Namespace:
         '--latent_space',
         type=str,
         choices=['W', 'W+'],
-        default='W',
-        help='Latent space for optimization'
+        default=None,
+        help='Latent space for optimization (defaults to preset config)'
     )
     parser.add_argument(
         '--init_method',
         type=str,
         choices=['mean_w', 'random'],
-        default='mean_w',
-        help='Initialization method (encoder not yet supported)'
+        default=None,
+        help='Initialization method (defaults to preset config)'
     )
     parser.add_argument(
         '--loss',
         type=str,
         choices=['l2', 'lpips'],
-        default='l2',
-        help='Loss function'
+        default=None,
+        help='Loss function (defaults to preset config)'
     )
     parser.add_argument(
         '--steps',
         type=int,
-        default=300,
-        help='Number of optimization steps'
+        default=None,
+        help='Number of optimization steps (defaults to preset config)'
     )
     parser.add_argument(
         '--lr',
         type=float,
-        default=0.01,
-        help='Learning rate'
+        default=None,
+        help='Learning rate (defaults to preset config)'
     )
     
     # Experiment Preset

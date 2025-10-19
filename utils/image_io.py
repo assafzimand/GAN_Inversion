@@ -168,6 +168,9 @@ def load_images_from_folder(
         image_files.extend(folder_path.glob(f'*{ext}'))
         image_files.extend(folder_path.glob(f'*{ext.upper()}'))
     
+    # Remove duplicates (Windows is case-insensitive, so .jpg and .JPG match the same file)
+    image_files = list(set(image_files))
+    
     if not image_files:
         raise ValueError(f"No images found in {folder_path} with extensions {extensions}")
     

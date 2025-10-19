@@ -11,7 +11,7 @@ combo_01:
   init_method: "mean_w"
   optimizer: "adam"
   learning_rate: 0.01
-  steps: 300
+  steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
 # Combo 2: W+ • L2 • Adam • mean_w • 300 steps
@@ -23,7 +23,7 @@ combo_02:
   init_method: "mean_w"
   optimizer: "adam"
   learning_rate: 0.01
-  steps: 300
+  steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
 # Combo 3: W+ • LPIPS • Adam • mean_w • 600 steps

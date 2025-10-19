@@ -7,7 +7,6 @@ Uses **HuggingFace StyleGAN2-FFHQ-128** (128×128 resolution) for fast experimen
 ## Features
 - Latent spaces: **W** and **W+**
 - Loss functions: **L2** (pixel), **LPIPS** (perceptual)
-- Initializations: **mean_w**, encoder-based (final stage)
 - Quantitative metrics: **PSNR, SSIM, LPIPS**
 - Evolution visualization: see optimization progress every 100 steps
 - Reproducible experiments with configs and seeding
@@ -31,28 +30,25 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# (Optional) Generate synthetic test images
-python scripts/prepare_data.py --mode generate --count 3
 ```
 
-**Note:** Pretrained StyleGAN2 weights are automatically downloaded from HuggingFace Hub on first run.
+**Note:** 
+- Pretrained StyleGAN2 weights are automatically downloaded from HuggingFace Hub on first run
+- Sample FFHQ images are included in `data/samples/` (ffhq_1.png, ffhq_2.png, ffhq_3.png)
 
-## Quickstart
-
-### Basic Usage
+## Usage
 
 Run inversion on a single image:
 ```bash
-python invert.py --input data/samples/face.png --preset combo_01
+python invert.py --input data/samples/ffhq_1.png --preset combo_01 --device cuda
 ```
 
-Run on a folder of images:
+Run on all sample images:
 ```bash
-python invert.py --input data/samples/ --preset combo_02
+python invert.py --input data/samples/ --preset combo_01 --device cuda
 ```
 
-### Model Details
+## Model Details
 
 **Generator:** `hajar001/stylegan2-ffhq-128` from HuggingFace Hub  
 **Architecture:** StyleGAN2 with 12 layers  
@@ -63,114 +59,138 @@ python invert.py --input data/samples/ --preset combo_02
 
 Images are automatically resized to 128×128 during loading.
 
-### Using Experiment Presets
+## Experiment Presets
 
-The project includes 4 staged experiment presets (see `PRD.md` for rationale):
+The project implements three optimization-based inversion experiments:
 
-#### Preset 1: W • L2 • mean_w • 300 steps
-Baseline sanity check with simplest settings:
+### Combo 1: W Space + L2 Loss
+**Purpose:** Baseline with simplest latent space and pixel-wise loss  
+**Configuration:**
+- Latent space: W
+- Loss: L2 (MSE)
+- Initialization: mean_w
+- Steps: 600
+- Learning rate: 0.01
+
 ```bash
-python invert.py --input data/samples/face.png --preset combo_01
+python invert.py --input data/samples/ --preset combo_01 --device cuda
 ```
 
-#### Preset 2: W+ • L2 • mean_w • 300 steps
-More expressive W+ latent space (per-layer control):
+### Combo 2: W+ Space + L2 Loss
+**Purpose:** More expressive W+ space (per-layer control) with pixel-wise loss  
+**Configuration:**
+- Latent space: W+
+- Loss: L2 (MSE)
+- Initialization: mean_w
+- Steps: 600
+- Learning rate: 0.01
+
 ```bash
-python invert.py --input data/samples/face.png --preset combo_02
+python invert.py --input data/samples/ --preset combo_02 --device cuda
 ```
 
-#### Preset 3: W+ • LPIPS • mean_w • 600 steps
-Perceptual loss for better visual quality:
+### Combo 3: W+ Space + LPIPS Loss
+**Purpose:** Perceptual loss for better visual quality  
+**Configuration:**
+- Latent space: W+
+- Loss: LPIPS (perceptual)
+- Initialization: mean_w
+- Steps: 600
+- Learning rate: 0.01
+
 ```bash
-python invert.py --input data/samples/face.png --preset combo_03
+python invert.py --input data/samples/ --preset combo_03 --device cuda
 ```
 
-> **Note:** Preset 4 (encoder initialization) is not yet implemented and will be added in the final stage.
-
-### Custom Settings
-
-Override preset parameters or run with fully custom settings:
-```bash
-python invert.py \
-  --input data/samples/face.png \
-  --latent_space W+ \
-  --loss lpips \
-  --init_method mean_w \
-  --steps 600 \
-  --lr 0.01 \
-  --device cuda \
-  --seed 42
-```
-
-Start from a preset and override specific parameters:
-```bash
-python invert.py \
-  --input data/samples/ \
-  --preset combo_02 \
-  --steps 500 \
-  --lr 0.02
-```
-
-### Output Structure
+## Output Structure
 
 Each run creates a unique directory `outputs/{combo}_{image}_{timestamp}/` containing:
 ```
-outputs/combo_01_test_image_01_20251019_143052/
+outputs/combo_01_multi_20251019_143052/
 ├── config.yaml                     # Full configuration used
 ├── originals/                      # Original input images
 ├── reconstructions/                # Final generated reconstructions
 ├── comparisons/
-│   └── <name>_evolution.png        # Evolution panel: original + steps 0,100,200,... with metrics
-├── metrics.json                    # PSNR, SSIM, LPIPS per image
-├── <name>_loss_curve.png           # Loss convergence plot
-└── <name>_loss_history.json        # Raw loss values per step
+│   ├── ffhq_1_evolution.png        # Evolution: original + steps 0,100,200,... + metrics
+│   ├── ffhq_2_evolution.png
+│   └── ffhq_3_evolution.png
+├── metrics.json                    # PSNR, SSIM, LPIPS for all images
+├── ffhq_1_loss_curve.png           # Individual loss curves
+├── ffhq_1_loss_history.json
+├── ffhq_2_loss_curve.png
+├── ffhq_2_loss_history.json
+├── ffhq_3_loss_curve.png
+└── ffhq_3_loss_history.json
 ```
 
-**Evolution Panel:** Shows the original image alongside reconstructions at iterations 0, 100, 200, etc., with final metrics (PSNR, SSIM, LPIPS) displayed in the title.
+**Evolution Panel:** Shows the original image alongside reconstructions at iterations 0, 100, 200, 300, 400, 500, 600, with final metrics (PSNR, SSIM, LPIPS) displayed in the title.
 
-## Experiments
+## Results
 
-To reproduce the staged experiments from the PRD:
+### Combo 1: W Space + L2 Loss
+![Combo 1 Results - Placeholder](path/to/combo1_results.png)
 
-**Experiment 1:** Baseline (W space, L2 loss)
-```bash
-python invert.py --input data/samples/ --preset combo_01
+**Average Metrics:**
+- PSNR: XX.XX dB
+- SSIM: 0.XXXX
+- LPIPS: 0.XXXX
+
+**Observations:** [To be filled with analysis]
+
+---
+
+### Combo 2: W+ Space + L2 Loss
+![Combo 2 Results - Placeholder](path/to/combo2_results.png)
+
+**Average Metrics:**
+- PSNR: XX.XX dB
+- SSIM: 0.XXXX
+- LPIPS: 0.XXXX
+
+**Observations:** [To be filled with analysis]
+
+---
+
+### Combo 3: W+ Space + LPIPS Loss
+![Combo 3 Results - Placeholder](path/to/combo3_results.png)
+
+**Average Metrics:**
+- PSNR: XX.XX dB
+- SSIM: 0.XXXX
+- LPIPS: 0.XXXX
+
+**Observations:** [To be filled with analysis]
+
+## Project Structure
+
 ```
-
-**Experiment 2:** W+ space comparison
-```bash
-python invert.py --input data/samples/ --preset combo_02
+GAN_Inversion/
+├── configs/
+│   ├── base.yaml              # Base configuration
+│   ├── experiment.yaml        # Experiment presets (combo_01, combo_02, combo_03)
+│   ├── losses/                # Loss-specific configs
+│   └── init/                  # Initialization configs
+├── data/
+│   └── samples/               # Sample FFHQ images
+├── models/
+│   └── stylegan2_loader.py    # StyleGAN2 loading and wrapper
+├── losses/
+│   ├── l2.py                  # L2 (MSE) loss
+│   └── lpips_loss.py          # LPIPS perceptual loss
+├── engine/
+│   ├── inverter.py            # Core optimization loop
+│   └── metrics.py             # Evaluation metrics (PSNR, SSIM, LPIPS)
+├── utils/
+│   ├── image_io.py            # Image loading/saving
+│   ├── viz.py                 # Visualization (evolution panels, loss curves)
+│   └── seed.py                # Reproducibility utilities
+├── tests/                     # Unit tests
+├── invert.py                  # Main CLI entry point
+├── requirements.txt           # Dependencies
+└── README.md
 ```
-
-**Experiment 3:** Perceptual loss comparison
-```bash
-python invert.py --input data/samples/ --preset combo_03
-```
-
-Compare metrics across experiments using the generated `metrics.json` files.
 
 ## Testing
 ```bash
 pytest tests/ -v
 ```
-
-## Troubleshooting
-
-### LPIPS issues
-- Ensure `lpips` package is installed: `pip install lpips`
-- For CPU fallback, set `--device cpu`
-
-### Out of memory
-- Reduce batch size in config
-- Use W space instead of W+ (fewer parameters)
-
-### Slow convergence
-- Increase steps in config
-- Try L-BFGS optimizer (experimental)
-
-## Project Structure
-See `PRD.md` for detailed requirements and `cursor/rules/` for coding standards.
-
-## License
-MIT
-
