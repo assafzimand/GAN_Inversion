@@ -42,19 +42,6 @@ combo_03:
 # Purpose: Encoder-based initialization with W space (compatible with e4e/pSp encoders)
 # NOTE: Uses pre-trained 1024×1024 encoders (e4e/pSp) with upscaling
 #       Images are upscaled 128×128 → 1024×1024, then encoded to W space
-combo_04:
-  experiment_name: "combo_04_w_lpips_encoder_300"
-  latent_space: "W"  # W space for perfect compatibility with standard encoders
-  loss_type: "lpips"
-  init_method: "encoder"  # Encoder-based initialization (e4e or pSp)
-  optimizer: "adam"
-  learning_rate: 0.01
-  steps: 300  # Fewer steps needed with encoder warm-start
-  # output_dir: auto-generated with combo name + image name + timestamp
-  
-  # Encoder configuration is loaded from configs/init/encoder.yaml
-  # To use this combo:
-  #   1. Download e4e or pSp encoder weights (see README)
-  #   2. Place in checkpoints/ directory
-  #   3. Configure path in configs/init/encoder.yaml
+# combo_04 is now in a separate folder (combo_04/) for Google Colab
+# See combo_04/README.md for instructions
 

@@ -1,0 +1,44 @@
+# Combo 04: Encoder-Based Inversion Configuration
+# Uses e4e encoder for initialization + our optimization loop
+# Resolution: 1024×1024 | Latent: W+ | Loss: LPIPS
+
+# Experiment naming
+experiment_name: "combo_04_wplus_lpips_encoder_300"
+
+# Model settings (e4e StyleGAN2 1024×1024)
+image_size: 1024
+latent_space: "W+"
+num_layers: 18  # 1024×1024 StyleGAN2 has 18 layers
+latent_dim: 512
+
+# Encoder settings
+encoder_checkpoint: "checkpoints/e4e_ffhq_encode.pt"
+encoder_type: "e4e"  # encoder4editing
+
+# Loss function
+loss_type: "lpips"
+lpips_net: "alex"  # Options: 'alex', 'vgg', 'squeeze'
+
+# Optimization
+steps: 300
+learning_rate: 0.01
+betas: [0.9, 0.999]  # Adam betas
+
+# Initialization
+init_method: "encoder"  # Use e4e encoder for initialization
+
+# Logging & Visualization
+log_interval: 50
+save_interval: 100  # Save intermediate reconstructions every N steps
+
+# Early stopping (disabled by default)
+enable_early_stop: false
+early_stop_patience: 50
+early_stop_threshold: 0.00001
+
+# Random seed for reproducibility
+seed: 42
+
+# Device
+device: "cuda"  # Colab has GPU by default
+

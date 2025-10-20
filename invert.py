@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--init_method',
         type=str,
-        choices=['mean_w', 'random', 'encoder'],
+        choices=['mean_w', 'random'],
         default=None,
         help='Initialization method (defaults to preset config)'
     )

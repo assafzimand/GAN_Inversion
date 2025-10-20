@@ -102,20 +102,26 @@ python invert.py --input data/samples/ --preset combo_02 --device cuda
 python invert.py --input data/samples/ --preset combo_03 --device cuda
 ```
 
-### Combo 4: W Space + LPIPS Loss + Encoder Initialization  
-**Purpose:** Use pre-trained encoder (e4e/pSp) for warm-start initialization  
+### Combo 4: Encoder-Based Inversion (Google Colab)
+**Purpose:** Use pre-trained e4e encoder for initialization + optimization refinement  
 **Configuration:**
-- Latent space: W (**compatible with standard 1024×1024 encoders**)
-- Loss: LPIPS (perceptual)
-- Initialization: encoder (e4e or pSp with automatic upscaling)
-- Steps: 300 (fewer steps needed with encoder warm-start)
-- Learning rate: 0.01
+- **Resolution:** 1024×1024 (full FFHQ quality)
+- **Latent space:** W+
+- **Loss:** LPIPS (perceptual)
+- **Initialization:** e4e encoder (warm-start)
+- **Steps:** 300 (fewer steps needed with encoder init)
+- **Learning rate:** 0.01
 
-**Note:** Uses pre-trained e4e or pSp encoders with automatic 128×128 → 1024×1024 upscaling. See [Encoder Setup](#encoder-setup) below for download instructions.
+**Location:** `combo_04/` (separate folder, Colab-only)
 
-```bash
-python invert.py --input data/samples/ --preset combo_04 --device cuda
-```
+**Why separate?** The e4e encoder requires CUDA compilation (custom ops), which is easiest on Google Colab. This keeps the main project (Combos 1-3) simple and local-runnable.
+
+**How to run:**
+1. Open `combo_04/combo_04_colab.ipynb` in Google Colab
+2. Run all cells (handles setup, cloning, dependencies automatically)
+3. Results save to your Google Drive: `MyDrive/GAN_Inversion_Results/combo_04/`
+
+See [`combo_04/README.md`](combo_04/README.md) for detailed instructions.
 
 ## Output Structure
 
@@ -188,88 +194,25 @@ outputs/combo_01_multi_20251019_143052/
 
 **Observations:** [To be filled with analysis of encoder-based initialization vs optimization-only]
 
-## Encoder Setup
-
-### About Encoder-Based Initialization
-
-Encoder-based initialization uses a neural network to directly predict StyleGAN latent codes from images. This provides a "warm start" for optimization, offering:
-- ✅ Faster convergence (fewer optimization steps needed)
-- ✅ Better initialization than random or mean_w  
-- ✅ Improved final reconstruction quality
-
-### Using Pre-trained Encoders with Upscaling
-
-**Our Approach:** Use pre-trained e4e or pSp encoders (trained on 1024×1024 FFHQ) with our 128×128 model.
-
-**How it works:**
-1. **Input**: 128×128 image
-2. **Upscale**: Automatically upscale to 1024×1024 (bicubic interpolation)
-3. **Encode**: Feed to e4e/pSp encoder → get W+ latent [1, 18, 512]
-4. **Convert**: Average W+ to W space → [1, 512] (perfectly compatible!)
-5. **Optimize**: Use as initialization for our 128×128 generator
-
-**Why W space?** The W latent space [512] is universal across all StyleGAN2 resolutions, ensuring perfect compatibility.
-
-### Setup Instructions
-
-#### Step 1: Clone e4e Repository
-
-The encoder loader needs the e4e codebase to properly load the model architecture:
-
-```bash
-# Clone into external directory (required)
-git clone https://github.com/omertov/encoder4editing.git external/encoder4editing
-
-# Install e4e dependencies
-pip install -r external/encoder4editing/requirements.txt
-```
-
-#### Step 2: Download Encoder Weights
-
-Download the pre-trained FFHQ encoder:
-
-```bash
-# Direct download link (Google Drive):
-# https://drive.google.com/file/d/1cUv_reLE6k3604or78EranS7XzuVMWeO/view
-
-# Using gdown (recommended):
-pip install gdown
-gdown --id 1cUv_reLE6k3604or78EranS7XzuVMWeO -O checkpoints/e4e_ffhq_encode.pt
-```
-
-**Note:** The checkpoint should be placed in `checkpoints/e4e_ffhq_encode.pt` (this path is already configured in `configs/init/encoder.yaml`)
-
-### Quick Links
-- **e4e GitHub**: https://github.com/omertov/encoder4editing
-- **pSp GitHub**: https://github.com/eladrich/pixel2style2pixel
-- **Both provide pre-trained weights** for FFHQ 1024×1024
-
-### Running Without Encoder
-
-If you don't want to use encoder initialization, combos 1-3 work excellently with optimization-only:
-- **Combo 1**: W + L2 (baseline)
-- **Combo 2**: W+ + L2 (more expressive space)
-- **Combo 3**: W+ + LPIPS (perceptual loss)
-
-These achieve strong results with 600 optimization steps.
-
 ## Project Structure
 
 ```
 GAN_Inversion/
 ├── configs/
 │   ├── base.yaml              # Base configuration
-│   ├── experiment.yaml        # Experiment presets (combo_01-04)
+│   ├── experiment.yaml        # Experiment presets (combo_01-03)
 │   ├── losses/                # Loss-specific configs
 │   └── init/
 │       ├── mean_w.yaml        # Mean W initialization config
-│       ├── random_w.yaml      # Random initialization config
-│       └── encoder.yaml       # Encoder initialization config
+│       └── random_w.yaml      # Random initialization config
+├── combo_04/                  # Encoder-based inversion (Google Colab)
+│   ├── README.md              # Detailed Colab instructions
+│   ├── combo_04_colab.ipynb   # Main Colab notebook
+│   └── config.yaml            # Combo 04 configuration
 ├── data/
-│   └── samples/               # Sample FFHQ images
+│   └── samples/               # Sample FFHQ images (ffhq_1, ffhq_2, ffhq_3)
 ├── models/
-│   ├── stylegan2_loader.py    # StyleGAN2 loading and wrapper
-│   └── encoder_loader.py      # Encoder loading and architectures
+│   └── stylegan2_loader.py    # StyleGAN2 loading and wrapper
 ├── losses/
 │   ├── l2.py                  # L2 (MSE) loss
 │   └── lpips_loss.py          # LPIPS perceptual loss
@@ -281,10 +224,10 @@ GAN_Inversion/
 │   ├── viz.py                 # Visualization (evolution panels, loss curves)
 │   └── seed.py                # Reproducibility utilities
 ├── tests/                     # Unit tests
-├── invert.py                  # Main CLI entry point
+├── invert.py                  # Main CLI entry point (combos 1-3)
 ├── requirements.txt           # Dependencies
 ├── docs/                      # Documentation
-│   └── report.pdf             # Full project report
+│   └── report.pdf             # Full project report (placeholder)
 └── README.md
 ```
 

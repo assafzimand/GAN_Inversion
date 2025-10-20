@@ -81,8 +81,8 @@ def run_inversion(
     # Validate inputs
     if latent_space not in ['W', 'W+']:
         raise ValueError(f"latent_space must be 'W' or 'W+', got '{latent_space}'")
-    if init_method not in ['mean_w', 'random', 'encoder']:
-        raise ValueError(f"init_method must be 'mean_w', 'random', or 'encoder', got '{init_method}'")
+    if init_method not in ['mean_w', 'random']:
+        raise ValueError(f"init_method must be 'mean_w' or 'random', got '{init_method}'")
     if loss_type not in ['l2', 'lpips']:
         raise ValueError(f"loss_type must be 'l2' or 'lpips', got '{loss_type}'")
     
@@ -101,7 +101,6 @@ def run_inversion(
         init_method=init_method,
         device=device,
         mean_w=mean_w,
-        target_image=target_image,  # For encoder-based initialization
         config=cfg
     )
     latent.requires_grad_(True)
@@ -200,7 +199,6 @@ def initialize_latent(
     init_method: str,
     device: torch.device,
     mean_w: Optional[torch.Tensor] = None,
-    target_image: Optional[torch.Tensor] = None,
     config: Optional[Dict[str, Any]] = None
 ) -> torch.Tensor:
     """
@@ -208,19 +206,17 @@ def initialize_latent(
 
     For W space: returns [1, 512]
     For W+ space: returns [1, 512] which will be broadcast by StyleGAN2Wrapper
-    For encoder init: returns [1, 512] or [1, num_layers, 512] depending on encoder
 
     Args:
         generator: StyleGAN2 generator (StyleGAN2Wrapper)
         latent_space: "W" or "W+"
-        init_method: "mean_w", "random", or "encoder"
+        init_method: "mean_w" or "random"
         device: Target device
         mean_w: Precomputed mean W vector [1, 512] (optional)
-        target_image: Target image [1, 3, H, W] (required for encoder init)
         config: Additional config parameters for initialization
 
     Returns:
-        Initialized latent code [1, 512] or [1, num_layers, 512]
+        Initialized latent code [1, 512]
 
     Raises:
         ValueError: If init_method is not supported or required params missing
@@ -263,54 +259,10 @@ def initialize_latent(
         latent = torch.randn(1, latent_dim, device=device) * std + mean
         logger.info(f"Initialized latent randomly: shape {latent.shape}, std={std}, mean={mean}")
         
-    elif init_method == 'encoder':
-        # Encoder-based initialization
-        if target_image is None:
-            raise ValueError("target_image is required for encoder initialization")
-        
-        # Load encoder config
-        import yaml
-        from pathlib import Path
-        from models.encoder_loader import load_encoder, encode_image
-        
-        encoder_config_path = Path('configs/init/encoder.yaml')
-        if not encoder_config_path.exists():
-            raise FileNotFoundError(
-                f"Encoder config not found: {encoder_config_path}\n"
-                "Please create configs/init/encoder.yaml with encoder settings."
-            )
-        
-        with open(encoder_config_path, 'r') as f:
-            encoder_config = yaml.safe_load(f)
-        
-        # Load encoder
-        logger.info("Loading encoder for initialization...")
-        encoder = load_encoder(encoder_config, device)
-        
-        # Encode image to latent (with automatic upscaling if needed)
-        latent = encode_image(encoder, target_image, device, encoder_config)
-        
-        # Ensure correct shape
-        if latent.dim() == 3:
-            # Encoder returned W+ [1, num_layers, 512]
-            if latent_space == 'W':
-                # Average across layers for W space
-                latent = latent.mean(dim=1)  # [1, 512]
-                logger.info(f"Converted W+ encoder output to W by averaging: {latent.shape}")
-        elif latent.dim() == 2:
-            # Encoder returned W [1, 512]
-            if latent_space == 'W+':
-                # Will be broadcast by StyleGAN2Wrapper
-                pass
-        else:
-            raise ValueError(f"Unexpected encoder output shape: {latent.shape}")
-        
-        logger.info(f"Initialized latent with encoder: shape {latent.shape}")
-        
     else:
         raise ValueError(
             f"Unknown init_method: '{init_method}'. "
-            f"Supported: 'mean_w', 'random', 'encoder'"
+            f"Supported: 'mean_w', 'random'"
         )
     
     # For both W and W+, we return [1, 512]

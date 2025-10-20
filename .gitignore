@@ -54,3 +54,8 @@ logs/
 # Cursor
 .cursor/
 
+# Combo 04 (e4e integration)
+combo_04/encoder4editing/
+combo_04/checkpoints/
+external/encoder4editing/
+
