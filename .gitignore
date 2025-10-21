@@ -53,6 +53,7 @@ logs/
 
 # Cursor
 .cursor/
+.cursorignore
 PRD.md
 
 # Combo 04 (e4e integration)
