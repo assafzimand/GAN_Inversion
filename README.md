@@ -2,15 +2,15 @@
 
 This repository implements the optimization-based GAN inversion approach using pretrained StyleGAN2.
 
-Uses **HuggingFace StyleGAN2-FFHQ-128** (128×128 resolution) for fast experimentation in Combos 1-3.
-And **e4e Encoder + StyleGAN2 Decoder** (256×256 resolution) in Combo 4 for higher-quality results with encoder-based initialization.
+Uses **HuggingFace StyleGAN2-FFHQ-128** (128×128 resolution) for fast experimentation in experiments 1-3.
+And **e4e Encoder + StyleGAN2 Decoder** (256×256 resolution) in experiment 4 for higher-quality results with encoder-based initialization.
 
 For a deeper mathematical overview of the algorithm see  **Project Summary** (docs/report.pdf). The summary also highlights several methods reviewed in the _GAN Inversion — A Survey_ paper (docs/GAN_Inversion_A_Survey.pdf).
 
 ## Features
 - Latent spaces: **W** and **W+**
 - Loss functions: **L2** (pixel), **LPIPS** (perceptual)
-- Initialization methods: **mean_w**, **random**, **encoder-based** (e4e)
+- Initialization methods: **mean_w**, **encoder-based** (e4e)
 - Quantitative metrics: **PSNR, SSIM, LPIPS**
 - Evolution visualization: see optimization progress every 100 steps
 - Reproducible experiments with configs and seeding
@@ -30,7 +30,7 @@ cd GAN_Inversion
 
 # Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate  # On Linux: source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -80,7 +80,7 @@ Images are automatically resized to 128×128 during loading.
 
 ## Experiment Presets
 
-The project implements three optimization-based inversion experiments:
+The project implements four optimization-based inversion experiments:
 
 ### Combo 1: W Space + L2 Loss
 **Purpose:** Baseline with simple latent space and pixel-wise loss  
@@ -135,7 +135,7 @@ python invert.py --input data/samples/ --preset combo_03 --device cuda
 **Location:** `combo_04/` - separate standalone folder, Colab-only, due to the e4e encoder requirements of CUDA compilation for custom ops, which is easiest on Google Colab with pre-installed toolchains. See the [Usage](#usage) section for instructions.
 
 **Technical Details:**
-- Uses the official [encoder4editing](https://github.com/omertov/encoder4editing) (e4e) framework
+- Uses the [encoder4editing](https://github.com/omertov/encoder4editing) (e4e) framework
 - Input: 1024×1024 images → resized to 256×256 for encoder
 - Encoder: 256×256 → W+ latent [1, 18, 512] (with latent_avg offset)
 - Decoder: W+ → 1024×1024 → face_pool → 256×256 output
@@ -180,7 +180,7 @@ Average metrics across all 3 test images (ffhq_1, ffhq_2, ffhq_3):
 **Notes:**
 - ↑ = higher is better, ↓ = lower is better
 - Combo 4 metrics computed in 256×256 space (PSNR/SSIM not directly comparable to 128×128 results due to resolution difference)
-- Combo 4 shows dramatic improvement: initial LPIPS ~0.268 → final 0.050 (600 steps)
+- Combo 4 shows dramatic improvement: initial LPIPS ~0.268 → final 0.050
 - Combo 4 achieves **56% better LPIPS** than Combo 3 (0.050 vs 0.114) despite different resolutions
 
 ---
@@ -188,13 +188,19 @@ Average metrics across all 3 test images (ffhq_1, ffhq_2, ffhq_3):
 ### Visual Comparison
 
 #### Combo 1: W Space + L2 Loss (Baseline)
-| ffhq_1 | ffhq_2 | ffhq_3 |
-|--------|--------|--------|
-| ![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_1_evolution.png) | ![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_2_evolution.png) | ![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_3_evolution.png) |
 
 **Configuration:** W space, L2 loss, mean_w init, 600 steps, 128×128
 
 **Metrics:** PSNR: 21.36 dB | SSIM: 0.621 | LPIPS: 0.259
+
+**ffhq_1:**
+![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_1_evolution.png)
+
+**ffhq_2:**
+![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_2_evolution.png)
+
+**ffhq_3:**
+![](docs/files_for_readme/combo_01_multi_best/comparisons/ffhq_3_evolution.png)
 
 **Observations:**
 - **W space limitations:** The simple W space (single 512-dimensional code repeated across all layers) provides reasonable reconstruction but lacks fine detail control
@@ -204,125 +210,88 @@ Average metrics across all 3 test images (ffhq_1, ffhq_2, ffhq_3):
 ---
 
 #### Combo 2: W+ Space + L2 Loss
-| ffhq_1 | ffhq_2 | ffhq_3 |
-|--------|--------|--------|
-| ![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_1_evolution.png) | ![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_2_evolution.png) | ![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_3_evolution.png) |
 
 **Configuration:** W+ space, L2 loss, mean_w init, 600 steps, 128×128
 
 **Metrics:** PSNR: 21.36 dB | SSIM: 0.621 | LPIPS: 0.259
 
+**ffhq_1:**
+![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_1_evolution.png)
+
+**ffhq_2:**
+![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_2_evolution.png)
+
+**ffhq_3:**
+![](docs/files_for_readme/combo_02_multi_best/comparisons/ffhq_3_evolution.png)
+
 **Observations:**
-- **W+ expressiveness:** Despite using per-layer latent codes (12 independent 512-d vectors), metrics are nearly identical to Combo 1
+- **W+ expressiveness:** Despite using per-layer latent codes (12 independent 512-d vectors), metrics are nearly identical to Combo 1 showing minimal improvement
 - **L2 loss dominance:** The pixel-wise L2 loss may not fully leverage W+'s expressiveness, as it encourages similar pixel-level solutions
-- **Minimal improvement:** At 128×128 resolution with L2 loss, W+ does not provide significant advantages over W space
 - **Hypothesis:** W+ benefits may become more apparent with perceptual losses or higher resolutions
 
 ---
 
 #### Combo 3: W+ Space + LPIPS Loss
-| ffhq_1 | ffhq_2 | ffhq_3 |
-|--------|--------|--------|
-| ![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_1_evolution.png) | ![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_2_evolution.png) | ![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_3_evolution.png) |
 
 **Configuration:** W+ space, LPIPS loss, mean_w init, 600 steps, 128×128
 
 **Metrics:** PSNR: 13.11 dB | SSIM: 0.175 | LPIPS: 0.114
 
+**ffhq_1:**
+![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_1_evolution.png)
+
+**ffhq_2:**
+![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_2_evolution.png)
+
+**ffhq_3:**
+![](docs/files_for_readme/combo_03_multi_best/comparisons/ffhq_3_evolution.png)
+
 **Observations:**
 - **Perceptual vs pixel-wise trade-off:** LPIPS loss achieves **56% better perceptual quality** (0.114 vs 0.259) but at the cost of pixel accuracy (PSNR drops from 21.36 to 13.11 dB)
-- **Visual quality:** Despite lower PSNR/SSIM, reconstructions often appear more natural and visually pleasing due to perceptual alignment
-- **LPIPS optimization:** The network optimizes for features that matter to human perception rather than exact pixel values
-- **W+ effectiveness:** The expressive W+ space allows LPIPS to find perceptually better solutions by adjusting fine-grained style attributes per layer
+- **Visual quality:** Despite lower PSNR/SSIM, reconstructions often appear more natural and visually pleasing due to perceptual alignment, since the network optimizes for features that matter to human perception rather than exact pixel values
 
 ---
 
 #### Combo 4: W+ Space + LPIPS Loss + Encoder Init
-| ffhq_1 | ffhq_2 | ffhq_3 |
-|--------|--------|--------|
-| ![](docs/files_for_readme/combo_04_multi_best/ffhq_1/ffhq_1_evolution.png) | ![](docs/files_for_readme/combo_04_multi_best/ffhq_2/ffhq_2_evolution.png) | ![](docs/files_for_readme/combo_04_multi_best/ffhq_3/ffhq_3_evolution.png) |
 
 **Configuration:** W+ space, LPIPS loss, e4e encoder init, 600 steps, 256×256
 
 **Metrics:** PSNR: 17.54 dB | SSIM: 0.485 | LPIPS: 0.050 (initial: 0.268)
 
+**ffhq_1:**
+![](docs/files_for_readme/combo_04_multi_best/ffhq_1/ffhq_1_evolution.png)
+
+**ffhq_2:**
+![](docs/files_for_readme/combo_04_multi_best/ffhq_2/ffhq_2_evolution.png)
+
+**ffhq_3:**
+![](docs/files_for_readme/combo_04_multi_best/ffhq_3/ffhq_3_evolution.png)
+
 **Observations:**
 - **Encoder warm-start advantage:** Starting from e4e encoder prediction (LPIPS ~0.268) provides a strong learned initialization
 - **Superior final quality:** Achieves **56% lower LPIPS** (0.050 vs 0.114) compared to Combo 3, demonstrating the power of encoder-based initialization
-- **Faster convergence:** Encoder provides a strong starting point, allowing optimization to focus on refinement rather than exploration
-- **Resolution benefit:** Higher 256×256 resolution captures more facial details and enables better metric comparison (PSNR: 17.54 dB, SSIM: 0.485)
-- **Step 0 quality:** The initial encoder prediction (Step 0) is already visually reasonable, unlike mean_w initialization which starts from an average face
-- **PSNR advantage over Combo 3:** Despite lower resolution optimization focus with LPIPS, Combo 4 achieves higher PSNR (17.54 vs 13.11 dB) due to better initialization
+- **Faster convergence:** Encoder provides a strong starting point, producing faster convergence
+- **Resolution benefit:** Higher 256×256 resolution captures more facial details
 - **Best overall:** Combines the strengths of encoder-based initialization, perceptual loss, and expressive W+ space for highest quality results
 
 ---
 
-### Key Findings
+## Summary
 
-#### 1. Latent Space Impact (Combo 1 vs 2)
-**Finding:** At 128×128 resolution with L2 loss, **W and W+ spaces perform identically** (PSNR: 21.36 dB, SSIM: 0.621, LPIPS: 0.259)
+This repository implements the **optimization-based GAN inversion** approach for StyleGAN2, successfully demonstrating the reconstruction of target images through latent code optimization. 
 
-**Analysis:**
-- W+ space has 12× more parameters (12 independent 512-d codes vs 1 shared code) but shows no improvement
-- **Hypothesis:** L2 loss optimization converges to similar solutions regardless of latent space expressiveness
-- **Implication:** W+ benefits require either:
-  - Perceptual losses that leverage per-layer control (see Combo 3)
-  - Higher resolutions where fine detail control matters more
-  - Different initialization strategies
+Four experiments were conducted to provide an initial understanding of how different parameters affect inversion quality and the possible results that can be achieved:
 
-#### 2. Loss Function Impact (Combo 2 vs 3)
-**Finding:** LPIPS loss achieves **56% better perceptual quality** but sacrifices pixel accuracy
+1. **Experiment 1** establishes a baseline using W space with L2 loss and mean_w initialization
+2. **Experiment 2** explores the W+ latent space while maintaining L2 loss
+3. **Experiment 3** demonstrates the impact of perceptual loss (LPIPS) with W+ space
+4. **Experiment 4** introduces encoder-based initialization with higher resolution (256×256)
 
-**Quantitative Trade-off:**
-- LPIPS: 0.259 → 0.114 (-56%, better) ✅
-- PSNR: 21.36 → 13.11 dB (-39%, worse) ⚠️
-- SSIM: 0.621 → 0.175 (-72%, worse) ⚠️
+The experiments reveal the interplay between **latent space expressiveness** (W vs W+), **loss function choice** (L2 vs LPIPS), **initialization strategy** (mean_w vs encoder-based), and **resolution**. While these four configurations provide valuable insights, further exploration of different parameter combinations and alternative approaches could yield additional improvements in reconstruction quality and efficiency.
 
-**Analysis:**
-- **LPIPS optimization** prioritizes human perception over pixel-perfect matching
-- Lower PSNR/SSIM does not mean worse visual quality—it reflects different optimization objectives
-- **W+ effectiveness unlocked:** The expressive W+ space is better utilized with perceptual loss, allowing fine-grained style adjustments per layer
-- **Recommendation:** For GAN inversion, perceptual metrics (LPIPS) better align with visual quality than pixel-wise metrics (PSNR/SSIM)
+## Documentation
 
-#### 3. Initialization Impact (Combo 3 vs 4)
-**Finding:** Encoder-based initialization provides **learned starting point** and **56% better final results**
-
-**Quantitative Improvement:**
-- Initial quality: Combo 4 (encoder) starts at LPIPS 0.268, already reasonable visual quality
-- Final quality: Combo 3 achieves 0.114, Combo 4 achieves **0.050 LPIPS** (-56%)
-- Pixel accuracy: Combo 4 achieves PSNR 17.54 dB vs Combo 3's 13.11 dB (+34% improvement)
-- Convergence: Encoder initialization allows optimization to focus on refinement vs exploration from scratch
-
-**Analysis:**
-- **Warm-start advantage:** Pre-trained encoder (e4e) provides learned prior knowledge about face-to-latent mapping
-- **Step 0 quality:** Encoder prediction is immediately visually reasonable (unlike mean_w which starts from average face)
-- **Optimization efficiency:** 600 steps from encoder init achieves better results than 600 steps from mean_w
-- **Resolution synergy:** Higher 256×256 resolution (Combo 4) captures more detail, complementing encoder quality
-- **Dual benefit:** Encoder initialization improves both perceptual (LPIPS) and pixel-wise (PSNR) metrics
-
-#### 4. Resolution Impact (128×128 vs 256×256)
-**Finding:** Higher resolution enables better detail capture but requires appropriate models (e4e)
-
-**Analysis:**
-- Combo 1-3 (128×128): Fast experimentation, limited by HuggingFace model capacity
-- Combo 4 (256×256): Uses e4e's native resolution for better facial detail reconstruction
-- **Trade-off:** Higher resolution requires more compute but enables finer detail optimization
-- **Not directly comparable:** Different resolutions make PSNR/SSIM comparison meaningless across combos
-
-#### Summary: Best Practices for GAN Inversion
-
-| Goal | Recommended Configuration | Rationale |
-|------|---------------------------|-----------|
-| **Fast experimentation** | W + L2 + mean_w (Combo 1) | Simple, interpretable, good baseline |
-| **Better perceptual quality** | W+ + LPIPS + mean_w (Combo 3) | 56% better LPIPS than L2 |
-| **Best quality** | W+ + LPIPS + encoder (Combo 4) | Learned init + perceptual loss = 56% better LPIPS than Combo 3 |
-| **Pixel-perfect matching** | W+ + L2 (Combo 2) | If PSNR/SSIM are critical (not recommended for faces) |
-
-**Key Insight:** The combination of **encoder initialization + perceptual loss + expressive latent space** (Combo 4) is crucial for high-quality GAN inversion. Each component contributes:
-- Encoder: Strong starting point (learned face-to-latent mapping)
-- LPIPS: Optimizes for human perception (56% better than Combo 3's 0.114)
-- W+: Provides fine-grained control (unlocked by LPIPS)
-- Resolution: 256×256 enables finer detail capture (PSNR 17.54 dB, SSIM 0.485)
+For detailed technical report, methodology, and analysis, see: [Project Summary](docs/summary.pdf)
 
 ## Project Structure
 
@@ -360,7 +329,3 @@ GAN_Inversion/
 │   └── report.pdf             # Full project report (placeholder)
 └── README.md
 ```
-
-## Documentation
-
-For detailed technical report, methodology, and analysis, see: [Project Summary](docs/summary.pdf)
