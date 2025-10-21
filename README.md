@@ -318,7 +318,7 @@ The experiments reveal the interplay between **latent space expressiveness** (W 
 
 ## Documentation
 
-For detailed technical report, methodology, and analysis, see: [Project Summary](docs/summary.pdf)
+For detailed technical report, methodology, and analysis, see: [Project Summary](docs/Project%20Summary.pdf)
 
 ## References
 
@@ -361,6 +361,7 @@ GAN_Inversion/
 ├── invert.py                  # Main CLI entry point (combos 1-3)
 ├── requirements.txt           # Dependencies
 ├── docs/                      # Documentation
-│   └── report.pdf             # Full project report (placeholder)
+│   ├── Project Summary.pdf    # Technical report and methodology
+│   └── GAN_Inversion_A_Survey.pdf  # Survey paper reference
 └── README.md
 ```
