@@ -23,6 +23,8 @@ For a deeper mathematical overview of the algorithm see  **Project Summary** (do
 - CUDA-capable GPU (recommended)
 
 ### Setup
+
+#### 1. Clone and Create Environment
 ```bash
 # Clone the repository
 git clone https://github.com/assafzimand/GAN_Inversion.git
@@ -30,14 +32,37 @@ cd GAN_Inversion
 
 # Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # On Linux: source venv/bin/activate
+venv\Scripts\activate  # On Linux/Mac: source venv/bin/activate
+```
 
-# Install dependencies
+#### 2. Install PyTorch
+
+**For GPU (CUDA 12.1+):**
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+```
+
+**For GPU (CUDA 11.8):**
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+```
+
+**For CPU only (not recommended for Combos 1-3):**
+```bash
+pip install torch torchvision
+```
+
+#### 3. Install Remaining Dependencies
+```bash
 pip install -r requirements.txt
 ```
 
+#### 4. Verify Installation
+```bash
+python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+```
+
 **Note:** 
-- Automatically uses CUDA if available (falls back to CPU if not)
 - Pretrained StyleGAN2 weights are automatically downloaded on first run
 - Sample FFHQ images are included in `data/samples/` (ffhq_1.png, ffhq_2.png, ffhq_3.png)
 
