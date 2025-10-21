@@ -83,14 +83,15 @@ python invert.py --input data/samples/ --preset combo_01 --device cuda
 ### Combo 4 (Google Colab)
 
 1. Open `combo_04/combo_04_colab.ipynb` in [Google Colab](https://colab.research.google.com/)
-2. Run all cells in order:
+2. **Set GPU Runtime:** Runtime → Change runtime type → Hardware accelerator: **GPU** (L4 recommended, used during development)
+3. Run all cells in order:
    - Mounts Google Drive for automatic result downloads
    - Clones this repository and e4e encoder repository
    - Installs dependencies and downloads e4e checkpoint
    - Loads images from `data/samples/`
    - Runs encoder initialization + 600-step optimization
    - Saves results to `MyDrive/GAN_Inversion_Results/combo_04/`
-3. View results in Colab or download from Google Drive
+4. View results in Colab or download from Google Drive
 
 
 ## Model Details
