@@ -53,6 +53,7 @@ logs/
 
 # Cursor
 .cursor/
+PRD.md
 
 # Combo 04 (e4e integration)
 combo_04/encoder4editing/

@@ -1,0 +1,25 @@
+betas:
+- 0.9
+- 0.999
+deterministic: true
+device: cuda
+experiment_name: combo_03_wplus_lpips_meanw_600
+image_size: 128
+init_method: mean_w
+input_path: data/samples/
+latent_dim: 512
+latent_space: W+
+learning_rate: 0.03
+log_interval: 50
+loss_type: lpips
+num_layers: 12
+optimizer: adam
+output_dir: outputs/combo_03_multi_20251019_191409
+save_diffs: true
+save_intermediate: false
+save_loss_curve: true
+save_metrics: true
+save_reconstructions: true
+seed: 42
+steps: 600
+weights_path: hf://hajar001/stylegan2-ffhq-128

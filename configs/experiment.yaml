@@ -10,7 +10,7 @@ combo_01:
   loss_type: "l2"
   init_method: "mean_w"
   optimizer: "adam"
-  learning_rate: 0.1
+  learning_rate: 0.03
   steps: 600
   # output_dir: auto-generated with combo name + image name + timestamp
 
