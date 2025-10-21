@@ -1,11 +1,9 @@
 # Core dependencies
-# PyTorch with CUDA 11.7 support
-# Install with: pip install torch==2.0.1 torchvision==0.15.2 --index-url https://download.pytorch.org/whl/cu117
-# For CPU-only: pip install torch==2.0.1 torchvision==0.15.2
-torch==2.0.1+cu117
-torchvision==0.15.2+cu117
-numpy==1.24.3
-pillow==10.0.0
+# PyTorch (automatically uses CUDA if available)
+torch>=2.0.1
+torchvision>=0.15.2
+numpy>=1.24.3
+pillow>=10.0.0
 
 # Perceptual loss
 lpips==0.1.4

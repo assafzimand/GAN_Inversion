@@ -37,6 +37,7 @@ pip install -r requirements.txt
 ```
 
 **Note:** 
+- Automatically uses CUDA if available (falls back to CPU if not)
 - Pretrained StyleGAN2 weights are automatically downloaded on first run
 - Sample FFHQ images are included in `data/samples/` (ffhq_1.png, ffhq_2.png, ffhq_3.png)
 
