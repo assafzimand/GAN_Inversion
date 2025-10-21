@@ -5,7 +5,7 @@ This repository implements the optimization-based GAN inversion approach using p
 Uses **HuggingFace StyleGAN2-FFHQ-128** (128×128 resolution) for fast experimentation in experiments 1-3.
 And **e4e Encoder + StyleGAN2 Decoder** (256×256 resolution) in experiment 4 for higher-quality results with encoder-based initialization.
 
-For a deeper mathematical overview of the algorithm see  **Project Summary** (docs/report.pdf). The summary also highlights several methods reviewed in the _GAN Inversion — A Survey_ paper (docs/GAN_Inversion_A_Survey.pdf).
+For a deeper mathematical overview of the algorithm and related methods, see **[Project Summary](docs/Project%20Summary.pdf)**. The summary also discusses several approaches reviewed in the survey paper: **[GAN Inversion — A Survey](docs/GAN_Inversion_A_Survey.pdf)**.
 
 ## Features
 - Latent spaces: **W** and **W+**
