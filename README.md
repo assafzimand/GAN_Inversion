@@ -293,6 +293,14 @@ The experiments reveal the interplay between **latent space expressiveness** (W 
 
 For detailed technical report, methodology, and analysis, see: [Project Summary](docs/summary.pdf)
 
+## References
+
+- **GAN Inversion Survey:** Xia, W., Zhang, Y., Yang, Y., Xue, J. H., Zhou, B., & Yang, M. H. (2022). GAN inversion: A survey. *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 45(3), 3121-3138. [Paper](docs/GAN_Inversion_A_Survey.pdf)
+
+- **StyleGAN2-FFHQ-128 Model:** Pre-trained StyleGAN2 generator (128×128 resolution) from HuggingFace Hub. [hajar001/stylegan2-ffhq-128](https://huggingface.co/hajar001/stylegan2-ffhq-128)
+
+- **Encoder for Editing (e4e):** Tov, O., Alaluf, Y., Nitzan, Y., Patashnik, O., & Cohen-Or, D. (2021). Designing an encoder for StyleGAN image manipulation. *ACM Transactions on Graphics (TOG)*, 40(4), 1-14. [GitHub Repository](https://github.com/omertov/encoder4editing)
+
 ## Project Structure
 
 ```
